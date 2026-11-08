@@ -45,6 +45,14 @@ class BuildTest(unittest.TestCase):
         lean = build.build(self.root, pathlib.Path("/Users/ana"), bodies=False)
         self.assertTrue(all("body" not in n for n in lean["nodes"]))
 
+    def test_non_ascii_and_windows_temp(self):
+        mem(self.root, "C--Users-ana-Projects-café", "notas", "ação ◆ 🧠")
+        mem(self.root, "C--Users-ana-AppData-Local-Temp-xyz", "junk", "ignored")
+        data = build.build(self.root, pathlib.Path("C:\\Users\\ana"))
+        by = {n["id"]: n for n in data["nodes"]}
+        self.assertEqual(by["café/notas"]["body"], "ação ◆ 🧠")
+        self.assertFalse(any(i.endswith("/junk") for i in by))
+
     def test_unrelated_prefix_not_grouped(self):
         self.assertEqual(build.workspaces(["acme", "acmecorp", "acme-web"]),
                          {"acme": "acme", "acmecorp": "acmecorp", "acme-web": "acme"})

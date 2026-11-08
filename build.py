@@ -60,7 +60,7 @@ def build(root, home, bodies=True):
     for d in sorted(os.listdir(root)):
         mdir = root / d / "memory"
         # skip temp/scratch session dirs
-        if not mdir.is_dir() or d.startswith(("-private-", "-tmp-", "-var-folders-")):
+        if not mdir.is_dir() or d.startswith(("-private-", "-tmp-", "-var-folders-")) or "-AppData-Local-Temp-" in d:
             continue
         files = [f for f in sorted(mdir.glob("*.md")) if f.name != "MEMORY.md"]
         if files:
@@ -70,7 +70,7 @@ def build(root, home, bodies=True):
     nodes, by_name, by_stem = [], {}, {}
     for proj, files in raw:
         for f in files:
-            text = f.read_text(errors="replace")
+            text = f.read_text(encoding="utf-8", errors="replace")  # explicit: Windows defaults to cp1252
             fm, body = frontmatter(text)
             n = {"id": f"{proj}/{f.stem}", "project": proj, "workspace": ws[proj],
                  "file": str(f).replace(str(home), "~", 1),
@@ -121,7 +121,8 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     # '</' would end the inline <script> early if a description contained '</script>'
     payload = json.dumps(data).replace("</", "<\\/")
-    out.write_text((HERE / "template.html").read_text().replace("/*__DATA__*/null", payload))
+    template = (HERE / "template.html").read_text(encoding="utf-8")
+    out.write_text(template.replace("/*__DATA__*/null", payload), encoding="utf-8")
     print(f"{len(data['nodes'])} memories, {len(data['edges'])} links, {data['dangling']} dangling, "
           f"{len({n['project'] for n in data['nodes']})} projects, "
           f"{len({n['workspace'] for n in data['nodes']})} workspaces -> {out}")

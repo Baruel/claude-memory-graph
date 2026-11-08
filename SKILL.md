@@ -27,7 +27,9 @@ python3 -I ~/.claude/skills/claude-memory-graph/build.py ~/claude-memory-graph.h
 - The builder prints `N memories, N links, N dangling, N projects, N workspaces -> path`. Report those numbers.
 - It asserts that node ids are unique and that every edge points at a real node. If an assertion fails, report the error. Don't hand over a broken file.
 
-Open the file in a browser for the user if your environment allows it (`open` on macOS, `xdg-open` on Linux). If a sandbox blocks that, give them the command to run.
+On Windows, the interpreter is usually `python` or `py` rather than `python3`.
+
+Open the file in a browser for the user if your environment allows it (`open` on macOS, `xdg-open` on Linux, `start ""` on Windows). If a sandbox blocks that, give them the command to run.
 
 ## How it reads memories
 

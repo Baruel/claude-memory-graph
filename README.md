@@ -27,7 +27,7 @@ python3 ~/.claude/skills/claude-memory-graph/build.py ~/claude-memory-graph.html
 | `--home` | your home dir (used to shorten project labels) |
 | `--no-bodies` | off: memory text is included. Turn it on to keep only names and descriptions, e.g. for a graph you'll share |
 
-Requires Python 3.8+, standard library only.
+Requires Python 3.8+, standard library only. It runs on macOS, Linux and Windows. On Windows, use `python` or `py` instead of `python3`, with the path `%USERPROFILE%\.claude\skills\claude-memory-graph\build.py`.
 
 ## What you see
 
