@@ -64,26 +64,46 @@
   --font:"Iowan Old Style",Georgia,"Times New Roman",serif;
   --card-bg:#ffffff; --card-border:1.5px solid #111111; --card-shadow:none; --radius:0; --field:#ffffff;
 }
-/* cyber: HUD panels with notched corners, scanlines, cyan/magenta/yellow */
+/* claude (inspired by, not affiliated): warm ivory paper, clay accent, earthy palette, serif display */
+:root[data-theme="claude"]{
+  --bg:#f3f1e9; --surface:#faf9f5; --ink:#1f1e1b; --muted:#857f72; --line:#e3dfd2;
+  --edge:rgba(61,57,41,.14); --edge-hi:rgba(201,100,66,.85); --hub:#1f1e1b; --focus:#c96442;
+  --sat:46; --lum:52; --region:.06; --hues:16,38,92,205,330,170;
+  --font:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --card-bg:#faf9f5; --card-border:1px solid #e3dfd2; --card-blur:none; --radius:12px;
+  --card-shadow:0 1px 2px rgba(61,57,41,.05),0 6px 20px rgba(61,57,41,.07); --field:#f3f1e9;
+}
+/* cursor (inspired by, not affiliated): flat editor chrome, syntax-highlight palette, mono labels */
+:root[data-theme="cursor"]{
+  --bg:#141414; --surface:#1d1d1d; --ink:#e6e6e6; --muted:#8a8a8a; --line:#2c2c2c;
+  --edge:rgba(230,230,230,.08); --edge-hi:rgba(97,175,239,.9); --hub:#e6e6e6; --focus:#61afef;
+  --sat:62; --lum:66; --region:.04; --hues:207,286,29,95,173,48;
+  --font:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --card-bg:#1b1b1b; --card-border:1px solid #2c2c2c; --card-blur:none; --radius:8px;
+  --card-shadow:0 10px 30px rgba(0,0,0,.45); --field:#242424;
+}
+/* cyber: monochrome green-phosphor terminal (1980s command center): box-drawing double lines,
+   CRT bloom, scanlines + vignette, Plex Mono. Workspaces differ by slight hue/lightness shifts only. */
 :root[data-theme="cyber"]{
-  --bg:#04070b; --surface:#0a1218; --ink:#d8fbff; --muted:#5f949e; --line:#12404a;
-  --edge:rgba(0,240,255,.16); --edge-hi:rgba(0,240,255,.95); --hub:#f5f500; --focus:#ff2a6d;
-  --sat:100; --lum:56; --region:.045; --glow:7; --grid:rgba(0,240,255,.07); --hues:186,332,58,268,148;
-  --font:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
-  --card-bg:rgba(4,16,22,.74); --card-border:1px solid rgba(0,240,255,.6); --card-blur:blur(6px);
-  --card-shadow:0 0 22px rgba(0,240,255,.16),inset 0 0 18px rgba(0,240,255,.06); --radius:0;
-  --clip:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
-  --field:rgba(0,240,255,.07);
-  --scan:repeating-linear-gradient(0deg,rgba(0,240,255,.035) 0 1px,transparent 1px 3px);
+  --bg:#010805; --surface:#03120a; --ink:#b8ffd4; --muted:#3f9a66; --line:#0d4a2a;
+  --edge:rgba(0,204,106,.16); --edge-hi:rgba(120,255,180,.95); --hub:#7dffb2; --focus:#eafff1;
+  --sat:100; --lum:44; --region:.04; --glow:8; --grid:rgba(0,204,106,.06); --hues:150,138,162,126,174;
+  --font:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --card-bg:rgba(1,12,6,.86); --card-border:3px double rgba(0,204,106,.75); --card-blur:blur(2px);
+  --card-shadow:0 0 14px rgba(0,204,106,.22),inset 0 0 22px rgba(0,204,106,.06); --radius:0;
+  --field:rgba(0,204,106,.06); --text-glow:0 0 6px rgba(0,255,136,.4);
+  --scan:repeating-linear-gradient(0deg,rgba(0,0,0,.26) 0 1px,transparent 1px 3px),
+         radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
-  font:14px/1.45 var(--font);overflow:hidden}
+  font:14px/1.45 var(--font);overflow:hidden;text-shadow:var(--text-glow,none)}
 /* floating cards: one material per theme, set by the --card-* tokens */
 header,#legend,#panel,#themes,#tip{background:var(--card-bg);border:var(--card-border);border-radius:var(--radius);
   box-shadow:var(--card-shadow);-webkit-backdrop-filter:var(--card-blur);backdrop-filter:var(--card-blur);clip-path:var(--clip)}
 body::after{content:"";position:fixed;inset:0;pointer-events:none;background:var(--scan);z-index:20}
-#themes{position:fixed;right:16px;top:84px;width:230px;padding:6px;z-index:7}
+/* --hdr is the header's live height (set from JS), so nothing slides under a wrapped header */
+#themes{position:fixed;right:16px;top:calc(var(--hdr,56px) + 28px);width:230px;padding:6px;z-index:7}
 #themes button{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:8px;padding:6px 8px;
   text-align:left;background:transparent;font-size:13px}
 #themes button:hover,#themes button:focus-visible{background:var(--bg)}
@@ -96,9 +116,15 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:var
 header{position:fixed;top:16px;left:16px;right:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
   padding:9px 10px 9px 18px;z-index:6}
 h1{font-size:15px;font-weight:600;margin:0 8px 0 0;letter-spacing:-.01em}
-.stat{color:var(--muted);font-size:12px;margin-right:auto}
+.stat{color:var(--muted);font-size:12px}
+.credit{color:var(--muted);font-size:12px;margin-right:auto;padding-left:10px;border-left:1px solid var(--line)}
+.credit a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.credit a:hover,.credit a:focus-visible{border-bottom-color:var(--ink)}
+.credit a.star{margin-left:8px;padding:2px 9px;border:1px solid var(--line);border-radius:min(999px,calc(var(--radius) * 99));background:var(--field)}
+.credit a.star:hover,.credit a.star:focus-visible{border-color:var(--focus);color:var(--focus)}
+@media (max-width:1280px){.stat{display:none}.credit{border-left:0;padding-left:0}}
 input[type=search]{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:min(999px,calc(var(--radius) * 99));
-  padding:7px 14px;font:inherit;width:220px;max-width:100%}
+  padding:7px 14px;font:inherit;width:180px;max-width:100%}
 button{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:min(999px,calc(var(--radius) * 99));
   padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
 button[aria-pressed="false"]{opacity:.45}
@@ -110,14 +136,28 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-
 .sw{width:10px;height:10px;border-radius:50%;flex:none}
 .proj .n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
 .proj.ws{margin-top:4px}
-.key{margin:2px 4px 10px;font-size:11px;line-height:1.45;color:var(--muted)}
+.key{margin:6px 4px 12px;font-size:11px;line-height:1.45;color:var(--muted)}
+#types{display:flex;flex-wrap:wrap;gap:4px;margin:0 2px}
+#types button{padding:3px 9px;font-size:11px}
 .proj.sub{padding-left:24px;font-size:12px}
 .proj.sub .sw{width:8px;height:8px}
-#panel{position:fixed;top:84px;right:16px;width:340px;max-height:calc(100vh - 100px);overflow:auto;padding:16px 18px;display:none;z-index:5}
+#panel{position:fixed;top:calc(var(--hdr,56px) + 28px);right:16px;width:340px;max-height:calc(100vh - var(--hdr,56px) - 44px);overflow:auto;padding:16px 18px;display:none;z-index:5}
 #panel.open{display:block}
 #panel h3{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
 #panel .meta{color:var(--muted);font-size:12px;margin-bottom:10px}
 #panel .desc{margin:0 0 12px}
+#panel.wide{width:460px}
+#panel .body{font-size:13px;line-height:1.6;margin:4px 0 14px}
+#panel .body p{margin:0 0 9px}
+#panel .body h4{font-size:13px;margin:12px 0 4px}
+#panel .body ul{list-style:disc;padding-left:18px;margin:0 0 9px}
+#panel .body li{margin:2px 0}
+#panel .body code{font:12px ui-monospace,Menlo,monospace;background:var(--field);padding:1px 4px;border-radius:4px;display:inline;margin:0;color:var(--ink);word-break:break-word}
+#panel .body pre{font:11.5px/1.5 ui-monospace,Menlo,monospace;background:var(--field);padding:8px 10px;white-space:pre-wrap;word-break:break-word;margin:0 0 9px;border-radius:min(8px,var(--radius))}
+#panel .body pre.tbl{margin:0;padding:1px 10px;border-radius:0}
+#panel .body a{color:var(--ink)}
+#panel .body .wl{display:inline;border:0;padding:0;background:none;font:inherit;color:var(--ink);text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+#panel .body .wl.dead{color:var(--muted);cursor:help}
 #panel code{font:11px ui-monospace,Menlo,monospace;color:var(--muted);word-break:break-all;display:block;margin-bottom:12px}
 #panel ul{list-style:none;margin:0;padding:0}
 #panel li button{border:0;background:transparent;padding:3px 0;text-align:left;color:var(--ink);text-decoration:underline;text-underline-offset:2px}
@@ -143,8 +183,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-
 <canvas id="c" aria-label="Graph of Claude memories grouped by project"></canvas>
 <header>
   <h1>Memory Graph</h1><span class="stat" id="stat"></span>
+  <span class="credit"><a href="https://github.com/jubscodes/claude-memory-graph" target="_blank" rel="noopener">claude-memory-graph</a>
+    by <a href="https://github.com/jubscodes" target="_blank" rel="noopener">@jubscodes</a>
+    <a class="star" href="https://github.com/jubscodes/claude-memory-graph" target="_blank" rel="noopener" title="Star the repo on GitHub">★ Star</a></span>
   <input type="search" id="q" placeholder="Search memories" aria-label="Search memories">
-  <span id="types"></span>
   <div class="tm">
     <button id="theme" aria-haspopup="menu" aria-expanded="false" aria-controls="themes">Theme: <span id="tname">Auto</span> ▾</button>
   </div>
@@ -152,7 +194,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-
 <!-- outside the header so the header's clip-path and backdrop blur can't clip or flatten it -->
 <div id="themes" role="menu" aria-label="Themes" hidden></div>
 <nav id="legend" aria-label="Workspaces">
-  <p class="key">Shape = type: ◆ feedback · ● project · ■ reference · ▲ user. The biggest plain dots are project hubs; size grows with links.</p>
+  <h2>Types</h2>
+  <div id="types"></div>
+  <p class="key">Shape shows the type. The biggest plain dots are project hubs; size grows with links.</p>
   <h2>Workspaces</h2><div id="projs"></div></nav>
 <aside id="panel" aria-live="polite"><button id="close" aria-label="Close">×</button><div id="pbody"></div></aside>
 <div id="tip" role="tooltip"></div>
@@ -222,7 +266,8 @@ let query = '', selected = null, hover = null;
 const visible = n => n.hub ? projOn[n.project] : projOn[n.project] && typeOn[n.type];
 const matches = n => !query || (n.name + ' ' + n.desc + ' ' + n.id).toLowerCase().includes(query);
 
-$('#stat').textContent = `${nodes.length} memories · ${links.length} links · ${projects.length} projects · built ${DATA.built}`;
+$('#stat').textContent = `${nodes.length} memories · ${links.length} links · ${projects.length} projects`;
+$('#stat').title = `built ${DATA.built}`;
 // glyphs match shape() below: the chips double as the shape key
 const GLYPH = {feedback:'◆', reference:'■', user:'▲'};
 $('#types').innerHTML = types.map(t => `<button data-t="${esc(t)}" aria-pressed="true" title="${esc(t)} memories"><span aria-hidden="true">${GLYPH[t] || '●'}</span> ${esc(t)}</button>`).join(' ');
@@ -270,7 +315,9 @@ const THEMES = [
   {id:'blueprint', label:'Blueprint', bg:'#0f3a6b', dots:['#cfe6d8','#f3d9c6','#ffffff']},
   {id:'neon', label:'Neon', bg:'#0e0d18', dots:['#7dffb0','#ff7ae6','#7ad8ff'], glow:true},
   {id:'print', label:'Print', bg:'#ffffff', dots:['#111','#555','#999']},
-  {id:'cyber', label:'Cyber', bg:'repeating-linear-gradient(0deg,rgba(0,240,255,.12) 0 1px,transparent 1px 4px),#04070b', dots:['#00f0ff','#ff2a6d','#f5f500'], glow:true},
+  {id:'claude', label:'Claude', note:'warm clay & ivory', bg:'#f3f1e9', dots:['#c96442','#8a9a5b','#5a7fa8']},
+  {id:'cursor', label:'Cursor', note:'editor dark', bg:'#141414', dots:['#61afef','#c678dd','#e5a050']},
+  {id:'cyber', label:'Cyber', note:'green phosphor terminal', bg:'repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),#021a0d', dots:['#00cc6a','#7dffb2','#2fa866'], glow:true},
 ];
 let theme = '';
 $('#themes').innerHTML = THEMES.map(t => `<button role="menuitemradio" data-theme-id="${t.id}" aria-checked="false">
@@ -337,7 +384,7 @@ function fit(){
   const vs = all.filter(visible); if (!vs.length) return;
   const xs = vs.map(n => n.x), ys = vs.map(n => n.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const padL = innerWidth > 640 ? 280 : 16, padT = 96;
+  const padL = innerWidth > 640 ? 280 : 16, padT = $('header').offsetHeight + 40;
   view.k = Math.min(3, Math.min((W - padL - 40) / (x1 - x0 + 40), (H - padT - 30) / (y1 - y0 + 40)));
   view.x = (x0 + x1) / 2 - (padL - 40) / 2 / view.k; view.y = (y0 + y1) / 2 - (padT - 30) / 2 / view.k;
 }
@@ -438,6 +485,40 @@ addEventListener('keydown', e => { if (e.key !== 'Escape' || !$('#themes').hidde
   if (selected && query) showResults(); else open(null); });
 $('#close').onclick = () => open(null);
 
+// --- minimal, safe markdown for memory bodies: text is escaped first, then a few patterns are re-marked
+const linkIdx = new Map();
+nodes.forEach(n => [n.name, n.id.slice(n.project.length + 1)].forEach(k => {
+  k = k.toLowerCase(); linkIdx.set(k, [...(linkIdx.get(k) || []), n]); }));
+function resolveLink(t, from){
+  t = t.trim().toLowerCase();
+  const c = [...(linkIdx.get(t) || []), ...(linkIdx.get(t.replace(/-/g, '_')) || [])];
+  return c.find(m => m.project === from.project) || c[0];
+}
+function md(src, from){
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\[\[([^\]|#]+)[^\]]*\]\]/g, (m, t) => { const n = resolveLink(t, from);
+      return n ? `<button class="wl" data-id="${esc(n.id)}">${t}</button>` : `<span class="wl dead" title="no memory with this name">${t}</span>`; })
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const out = []; let list = null, fence = null, para = [];
+  const flush = () => { if (para.length) out.push(`<p>${inline(para.join(' '))}</p>`); para = [];
+    if (list) { out.push(`<ul>${list.join('')}</ul>`); list = null; } };
+  for (const line of src.split('\n')) {
+    if (fence) { if (/^```/.test(line)) { out.push(`<pre>${esc(fence.join('\n'))}</pre>`); fence = null; } else fence.push(line); continue; }
+    if (/^```/.test(line)) { flush(); fence = []; continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)/), li = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)/);
+    if (h) { flush(); out.push(`<h4>${inline(h[2])}</h4>`); }
+    else if (li) { if (para.length) { const l = list; list = null; flush(); list = l; } (list = list || []).push(`<li>${inline(li[1])}</li>`); }
+    else if (/^\s*\|/.test(line)) { flush(); out.push(`<pre class="tbl">${esc(line)}</pre>`); }
+    else if (!line.trim()) flush();
+    else { if (list) { out.push(`<ul>${list.join('')}</ul>`); list = null; } para.push(line.trim()); }
+  }
+  if (fence) out.push(`<pre>${esc(fence.join('\n'))}</pre>`);
+  flush();
+  return out.join('');
+}
+
 function open(n){
   selected = n; const p = $('#panel');
   if (!n) { p.classList.remove('open'); draw(); return; }
@@ -447,7 +528,10 @@ function open(n){
     ? `<h3>${esc(n.name)}</h3><div class="meta">project · ${nodes.filter(m=>m.project===n.project).length} memories</div>` +
       list('Memories', nodes.filter(m => m.project === n.project).sort((a,b) => b.date.localeCompare(a.date)))
     : `<h3>${esc(n.name)}</h3><div class="meta"><span class="sw" style="display:inline-block;background:${pcolor(n.project)}"></span> ${esc(n.project)} · ${esc(n.type)} · modified ${n.date} · ${(n.size/1024).toFixed(1)} KB</div>
-       <p class="desc">${esc(n.desc || '—')}</p><code>${esc(n.file)}</code>` + list('Links to', out) + list('Linked from', inn));
+       <p class="desc">${esc(n.desc || '—')}</p><code>${esc(n.file)}</code>` +
+       (n.body ? `<h2>Memory</h2><div class="body">${md(n.body, n)}</div>` : '') +
+       list('Links to', out) + list('Linked from', inn));
+  p.classList.toggle('wide', !n.hub && !!n.body);
   p.classList.add('open'); draw();
 }
 $('#pbody').onclick = e => {
@@ -456,6 +540,8 @@ $('#pbody').onclick = e => {
   const n = byId.get(b.dataset.id); touched = true;  // stop auto-fit from undoing the jump
   view.x = n.x; view.y = n.y; view.k = Math.max(view.k, 1.4); open(n); };
 
+new ResizeObserver(() => document.documentElement.style.setProperty('--hdr', $('header').offsetHeight + 'px'))
+  .observe($('header'));
 let saved = ''; try { saved = localStorage.getItem('cmg-theme') || ''; } catch {}
 setTheme(THEMES.some(t => t.id === saved) ? saved : '');
 addEventListener('resize', resize); resize(); requestAnimationFrame(tick);

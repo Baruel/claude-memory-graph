@@ -54,7 +54,7 @@ def frontmatter(text):
     return fm, m.group(2)
 
 
-def build(root, home):
+def build(root, home, bodies=True):
     home_enc = encode(home)
     raw = []
     for d in sorted(os.listdir(root)):
@@ -78,6 +78,8 @@ def build(root, home):
                  "type": fm.get("type", "unknown"),
                  "date": datetime.date.fromtimestamp(f.stat().st_mtime).isoformat(),
                  "size": len(text), "links": re.findall(r"\[\[([^\]|#]+)", body)}
+            if bodies:
+                n["body"] = body.strip()[:20000]  # cap: one runaway file shouldn't bloat the page
             nodes.append(n)
             by_name.setdefault(n["name"].lower(), []).append(n)
             by_stem.setdefault(f.stem.lower(), []).append(n)
@@ -110,9 +112,11 @@ def main():
     ap.add_argument("out", nargs="?", default="memory-graph.html", help="output HTML path")
     ap.add_argument("--root", default=str(config / "projects"), help="Claude projects dir")
     ap.add_argument("--home", default=str(pathlib.Path.home()), help="home dir used to shorten labels")
+    ap.add_argument("--no-bodies", action="store_true",
+                    help="leave out memory text (names and descriptions only), e.g. for a graph you'll share")
     a = ap.parse_args()
 
-    data = build(pathlib.Path(a.root).expanduser(), pathlib.Path(a.home).expanduser())
+    data = build(pathlib.Path(a.root).expanduser(), pathlib.Path(a.home).expanduser(), bodies=not a.no_bodies)
     out = pathlib.Path(a.out).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)
     # '</' would end the inline <script> early if a description contained '</script>'

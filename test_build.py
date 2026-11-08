@@ -40,6 +40,11 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(self.data["dangling"], 1)
         self.assertEqual(self.by_id["home/prefs"]["type"], "user")  # nested under metadata:
 
+    def test_bodies_included_unless_disabled(self):
+        self.assertEqual(self.by_id["acme-api/auth"]["body"], "token rules")
+        lean = build.build(self.root, pathlib.Path("/Users/ana"), bodies=False)
+        self.assertTrue(all("body" not in n for n in lean["nodes"]))
+
     def test_unrelated_prefix_not_grouped(self):
         self.assertEqual(build.workspaces(["acme", "acmecorp", "acme-web"]),
                          {"acme": "acme", "acmecorp": "acmecorp", "acme-web": "acme"})
