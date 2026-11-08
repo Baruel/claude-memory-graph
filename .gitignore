@@ -1,0 +1,6 @@
+# generated graphs embed private memories
+*.html
+!template.html
+__pycache__/
+.playwright-mcp/
+.claude/
