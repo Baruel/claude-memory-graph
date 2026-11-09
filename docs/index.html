@@ -470,24 +470,31 @@ function pick(sx, sy){ let best = null, bd = 14*14;
   for (const n of all) { if (!visible(n)) continue; const [x,y] = toScreen(n), d = (x-sx)**2 + (y-sy)**2;
     const r = radius(n) * Math.max(.6, Math.min(view.k,2)) + 4; if (d < Math.max(bd, r*r) && d < bd + r*r) { bd = d; best = n; } }
   return best; }
-let dragNode = null, panning = null, moved = false;
+// A press only becomes a drag/pan after moving DRAG_PX; anything less is a click (hands wobble).
+const DRAG_PX = 6;
+let dragNode = null, panning = null, moved = false, press = null;
 cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); moved = false;
-  const n = pick(e.offsetX, e.offsetY);
-  if (n) { dragNode = n; kick(.3); } else panning = {x:e.offsetX, y:e.offsetY, vx:view.x, vy:view.y};
-  cv.classList.add('drag'); });
+  press = {x: e.offsetX, y: e.offsetY, node: pick(e.offsetX, e.offsetY), vx: view.x, vy: view.y}; });
 cv.addEventListener('pointermove', e => {
-  if (dragNode) { moved = true; [dragNode.x, dragNode.y] = toWorld(e.offsetX, e.offsetY); dragNode.vx = dragNode.vy = 0; return; }
-  if (panning) { moved = touched = true; view.x = panning.vx - (e.offsetX - panning.x) / view.k; view.y = panning.vy - (e.offsetY - panning.y) / view.k; draw(); return; }
+  if (press && !moved && Math.hypot(e.offsetX - press.x, e.offsetY - press.y) >= DRAG_PX) {
+    moved = true; cv.classList.add('drag'); $('#tip').style.display = 'none';
+    if (press.node) { dragNode = press.node; kick(.3); } else { panning = press; touched = true; }
+  }
+  if (press && !moved) return;  // still within click tolerance
+  if (dragNode) { [dragNode.x, dragNode.y] = toWorld(e.offsetX, e.offsetY); dragNode.vx = dragNode.vy = 0; return; }
+  if (panning) { view.x = panning.vx - (e.offsetX - panning.x) / view.k; view.y = panning.vy - (e.offsetY - panning.y) / view.k; draw(); return; }
   const n = pick(e.offsetX, e.offsetY);
-  if (n !== hover) { hover = n; draw(); }
+  if (n !== hover) { hover = n; cv.style.cursor = n ? 'pointer' : ''; draw(); }
   const tip = $('#tip');
   if (n) { tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 14, W - 290) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
     tip.innerHTML = n.hub ? `<b>${esc(n.name)}</b><span>${nodes.filter(m=>m.project===n.project).length} memories</span>`
       : `<b>${esc(n.name)}</b><span>${esc(n.project)} · ${esc(n.type)} · ${n.date}</span>`; }
   else tip.style.display = 'none'; });
 cv.addEventListener('pointerup', e => { cv.classList.remove('drag');
-  const n = dragNode; dragNode = null; panning = null;
-  if (!moved) open(n || null); });
+  const clicked = press && !moved ? press.node : undefined;
+  dragNode = null; panning = null; press = null;
+  if (clicked !== undefined) open(clicked || null); });
+cv.addEventListener('pointercancel', () => { cv.classList.remove('drag'); dragNode = panning = press = null; });
 cv.addEventListener('wheel', e => { e.preventDefault(); touched = true;
   const [wx, wy] = toWorld(e.offsetX, e.offsetY), k = Math.min(6, Math.max(.15, view.k * Math.exp(-e.deltaY * .0015)));
   view.k = k; view.x = wx - (e.offsetX - W/2) / k; view.y = wy - (e.offsetY - H/2) / k; draw(); }, {passive:false});
