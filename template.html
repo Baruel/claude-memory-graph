@@ -272,7 +272,7 @@ $('#stat').title = `built ${DATA.built}`;
 const GLYPH = {feedback:'◆', reference:'■', user:'▲'};
 $('#types').innerHTML = types.map(t => `<button data-t="${esc(t)}" aria-pressed="true" title="${esc(t)} memories"><span aria-hidden="true">${GLYPH[t] || '●'}</span> ${esc(t)}</button>`).join(' ');
 $('#types').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; const t = b.dataset.t;
-  typeOn[t] = !typeOn[t]; b.setAttribute('aria-pressed', typeOn[t]); kick(.3); };
+  typeOn[t] = !typeOn[t]; b.setAttribute('aria-pressed', typeOn[t]); kick(.18); };
 const wsSize = w => projects.filter(p => family(p) === w).reduce((s,p) => s + size[p], 0);
 const wsOrder = [...families].sort((a,b) => wsSize(b) - wsSize(a));
 function renderLegend(){ $('#projs').innerHTML = wsOrder.map(w => {
@@ -288,7 +288,7 @@ $('#projs').onclick = e => { const b = e.target.closest('[data-p],[data-w]'); if
   else { const on = !group.every(p => projOn[p]); group.forEach(p => projOn[p] = on); }
   document.querySelectorAll('.ws').forEach(x => x.setAttribute('aria-pressed', projects.some(p => family(p) === x.dataset.w && projOn[p])));
   document.querySelectorAll('.sub').forEach(x => x.setAttribute('aria-pressed', projOn[x.dataset.p]));
-  kick(.4); };
+  kick(.22); };
 $('#q').oninput = e => { query = e.target.value.trim().toLowerCase();
   if (query) showResults(); else if (!selected) open(null); else draw(); };
 $('#q').onkeydown = e => { if (e.key === 'Enter') $('#pbody [data-id]')?.click(); };
@@ -385,20 +385,25 @@ function step(){
     a.ms.forEach(n => { n.vx -= dx*f; n.vy -= dy*f; }); b.ms.forEach(n => { n.vx += dx*f; n.vy += dy*f; });
   }
   vs.forEach(n => { if (n === dragNode) return; n.vx -= n.x * .0015 * alpha; n.vy -= n.y * .0015 * alpha;
-    n.vx *= .82; n.vy *= .82; const sp = Math.hypot(n.vx, n.vy); if (sp > 30) { n.vx *= 30/sp; n.vy *= 30/sp; }
+    // heavy friction + low speed cap = nodes glide and settle without overshoot ("asmr" motion)
+    n.vx *= .55; n.vy *= .55; const sp = Math.hypot(n.vx, n.vy); if (sp > 10) { n.vx *= 10/sp; n.vy *= 10/sp; }
     n.x += n.vx; n.y += n.vy; });
-  alpha *= .985;
+  alpha *= .98;
 }
 let touched = false;  // stop auto-fitting once the viewer pans or zooms
 function fit(){
-  const vs = all.filter(visible); if (!vs.length) return;
+  const vs = all.filter(visible); if (!vs.length) return 0;
   const xs = vs.map(n => n.x), ys = vs.map(n => n.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const padL = innerWidth > 640 ? 280 : 16, padT = $('header').offsetHeight + 40;
-  view.k = Math.min(3, Math.min((W - padL - 40) / (x1 - x0 + 40), (H - padT - 30) / (y1 - y0 + 40)));
-  view.x = (x0 + x1) / 2 - (padL - 40) / 2 / view.k; view.y = (y0 + y1) / 2 - (padT - 30) / 2 / view.k;
+  // glide the camera toward the fitted view instead of snapping each frame
+  const tk = Math.min(3, Math.min((W - padL - 40) / (x1 - x0 + 40), (H - padT - 30) / (y1 - y0 + 40)));
+  const tx = (x0 + x1) / 2 - (padL - 40) / 2 / tk, ty = (y0 + y1) / 2 - (padT - 30) / 2 / tk, f = .08;
+  view.k += (tk - view.k) * f; view.x += (tx - view.x) * f; view.y += (ty - view.y) * f;
+  return Math.abs(tk - view.k) * W + (Math.abs(tx - view.x) + Math.abs(ty - view.y)) * view.k;  // px left to glide
 }
-function tick(){ step(); if (!touched) fit(); draw(); if (alpha > .02 || dragNode) requestAnimationFrame(tick); else running = false; }
+function tick(){ step(); const glide = touched ? 0 : fit(); draw();
+  if (alpha > .02 || dragNode || glide > .5) requestAnimationFrame(tick); else running = false; }
 
 // --- view
 let view = {x:0, y:0, k:.9}, W = 0, H = 0, dpr = 1;
@@ -478,7 +483,7 @@ cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); mov
 cv.addEventListener('pointermove', e => {
   if (press && !moved && Math.hypot(e.offsetX - press.x, e.offsetY - press.y) >= DRAG_PX) {
     moved = true; cv.classList.add('drag'); $('#tip').style.display = 'none';
-    if (press.node) { dragNode = press.node; kick(.3); } else { panning = press; touched = true; }
+    if (press.node) { dragNode = press.node; kick(.12); } else { panning = press; touched = true; }
   }
   if (press && !moved) return;  // still within click tolerance
   if (dragNode) { [dragNode.x, dragNode.y] = toWorld(e.offsetX, e.offsetY); dragNode.vx = dragNode.vy = 0; return; }
