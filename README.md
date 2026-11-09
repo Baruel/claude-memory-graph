@@ -6,6 +6,10 @@ The output is one self-contained HTML file. It needs no server, makes no network
 
 ![claude-memory-graph in the Ink theme: workspaces as regions, a memory opened in the side reader](docs/screenshot.png)
 
+## Why
+
+I asked Claude to remove one stale memory, and it quietly updated several others along the way. That's when it clicked: Claude's memory isn't a list, it's a graph, and I had no way to see it. This is the view I wanted: every memory, how the memories link, and what a change might ripple into.
+
 ## Install
 
 ```bash
@@ -27,7 +31,7 @@ python3 ~/.claude/skills/claude-memory-graph/build.py ~/claude-memory-graph.html
 | `--home` | your home dir (used to shorten project labels) |
 | `--no-bodies` | off: memory text is included. Turn it on to keep only names and descriptions, e.g. for a graph you'll share |
 
-Requires Python 3.8+, standard library only. It runs on macOS, Linux and Windows. On Windows, use `python` or `py` instead of `python3`, with the path `%USERPROFILE%\.claude\skills\claude-memory-graph\build.py`.
+Requires Python 3.8+, standard library only. Tested on macOS and Linux (Omarchy). It should also run on Windows; reports are welcome. On Windows, use `python` or `py` instead of `python3`, with the path `%USERPROFILE%\.claude\skills\claude-memory-graph\build.py`.
 
 ## What you see
 
@@ -54,7 +58,10 @@ python3 -I test_build.py
 
 ## Author
 
-Made by Julia Hoffmann Buratto ([@jubscodes](https://github.com/jubscodes)).
+Made by Julia Hoffmann Buratto ✧ priestess of the harness fortress ✧
+
+- GitHub: [@jubscodes](https://github.com/jubscodes)
+- X: [@hoffz_eth](https://x.com/hoffz_eth)
 
 If the graph showed you something about your memories, ⭐ [star the repo](https://github.com/jubscodes/claude-memory-graph). It helps other Claude Code users find it.
 
