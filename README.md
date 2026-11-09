@@ -58,6 +58,8 @@ Requires Python 3.8+, standard library only. Tested on macOS and Linux (Omarchy)
 
 Screenshots use the fictional demo set: a developer who names every project after a show.
 
+**On [Omarchy](https://omarchy.org)?** The builder reads your active Omarchy theme (`colors.toml`, or `alacritty.toml` on older themes) and adds a matching **Omarchy** theme, which the page uses by default. If you switch Omarchy themes, rebuild the graph to match.
+
 ## Privacy
 
 The HTML embeds each memory's name, description and full text (use `--no-bodies` to leave the text out). Treat it like the memories themselves. Check what's in it before you share it, and don't commit generated graphs. The `.gitignore` here excludes them.

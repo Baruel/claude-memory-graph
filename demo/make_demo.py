@@ -6,10 +6,11 @@ Original jokes only; no quotes from the shows. Deterministic; safe to regenerate
 
     python3 demo/make_demo.py && python3 build.py --root demo/projects --home /Users/ana docs/index.html
 """
-import pathlib, random, shutil
+import pathlib, random, re, shutil, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent / "projects"
-HOME = "-Users-ana"
+# optional arg: the home path to encode dir names against (default /Users/ana); pass the same to build.py --home
+HOME = re.sub(r"[^A-Za-z0-9]", "-", sys.argv[1] if len(sys.argv) > 1 else "/Users/ana")
 rnd = random.Random(7)
 
 # dir suffix -> (label, why, how, [(memory, type), ...])

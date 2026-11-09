@@ -53,6 +53,29 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(by["café/notas"]["body"], "ação ◆ 🧠")
         self.assertFalse(any(i.endswith("/junk") for i in by))
 
+    def test_omarchy_theme_from_colors_toml(self):
+        home = self.root / "home"
+        t = home / ".local/state/omarchy/current/theme"
+        t.mkdir(parents=True)
+        (t.parent / "theme.name").write_text("nord\n")
+        (t / "colors.toml").write_text('mode = "dark"\naccent = "#81a1c1"\nbackground = "#2e3440"\n'
+                                       'foreground = "#d8dee9"\nred = "#bf616a"\nblue = "#5e81ac"\n')
+        th = build.omarchy_theme(home)
+        self.assertEqual(th["name"], "nord")
+        self.assertEqual(th["tokens"]["--bg"], "#2e3440")
+        self.assertEqual(th["tokens"]["--focus"], "#81a1c1")
+        self.assertEqual(th["tokens"]["--hues"], "213,354")  # blue, red
+
+    def test_omarchy_theme_from_legacy_alacritty(self):
+        home = self.root / "home2"
+        t = home / ".config/omarchy/current/theme"
+        t.mkdir(parents=True)
+        (t / "alacritty.toml").write_text('[colors.primary]\nbackground = "0x1a1b26"\nforeground = "#c0caf5"\n'
+                                          '[colors.normal]\nblue = "#7aa2f7"\n')
+        th = build.omarchy_theme(home)
+        self.assertEqual((th["tokens"]["--bg"], th["tokens"]["--focus"]), ("#1a1b26", "#7aa2f7"))
+        self.assertIsNone(build.omarchy_theme(self.root / "nobody"))
+
     def test_unrelated_prefix_not_grouped(self):
         self.assertEqual(build.workspaces(["acme", "acmecorp", "acme-web"]),
                          {"acme": "acme", "acmecorp": "acmecorp", "acme-web": "acme"})

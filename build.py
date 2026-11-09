@@ -54,6 +54,87 @@ def frontmatter(text):
     return fm, m.group(2)
 
 
+def read_toml_colors(path):
+    """Tiny TOML reader for flat color files: returns {"section.key" or "key": "#hex"}.
+    shortcut: handles `key = "value"` lines and [section] headers only; enough for theme files."""
+    out, section = {}, ""
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.split("#", 1)[0] if not re.search(r'=\s*["\']#', line) else line
+        line = line.strip()
+        m = re.match(r"^\[([^\]]+)\]$", line)
+        if m:
+            section = m.group(1).strip()
+            continue
+        m = re.match(r'^([\w.-]+)\s*=\s*["\'](#?[0-9A-Za-z_ .-]+)["\']', line)
+        if m:
+            out[(section + "." if section else "") + m.group(1)] = m.group(2)
+    return out
+
+
+def _hex(c):
+    c = (c or "").strip().lstrip("#").replace("0x", "")
+    return "#" + c[:6] if re.fullmatch(r"[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?", c) else None
+
+
+def _hue(hexc):
+    r, g, b = (int(hexc[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    mx, mn = max(r, g, b), min(r, g, b)
+    if mx == mn:
+        return 0
+    d = mx - mn
+    h = (g - b) / d % 6 if mx == r else (b - r) / d + 2 if mx == g else (r - g) / d + 4
+    return round(h * 60) % 360
+
+
+def _rgba(hexc, a):
+    return "rgba(%d,%d,%d,%s)" % (int(hexc[1:3], 16), int(hexc[3:5], 16), int(hexc[5:7], 16), a)
+
+
+def omarchy_theme(home):
+    """Read the active Omarchy theme (if any) and map it onto the page's theme tokens."""
+    for d in (home / ".local/state/omarchy/current/theme", home / ".config/omarchy/current/theme"):
+        if not d.exists():
+            continue
+        c = {}
+        if (d / "colors.toml").exists():
+            c = {k: _hex(v) for k, v in read_toml_colors(d / "colors.toml").items()}
+        elif (d / "alacritty.toml").exists():  # older themes: derive from the terminal palette
+            a = {k: _hex(v) for k, v in read_toml_colors(d / "alacritty.toml").items()}
+            c = {"background": a.get("colors.primary.background"), "foreground": a.get("colors.primary.foreground"),
+                 "muted": a.get("colors.bright.black"), "accent": a.get("colors.normal.blue"),
+                 **{n: a.get("colors.normal." + n) for n in ("red", "green", "yellow", "blue", "magenta", "cyan")}}
+        bg, fg = c.get("background") or c.get("bg"), c.get("foreground") or c.get("fg")
+        if not (bg and fg):
+            continue
+        hues = [_hue(c[n]) for n in ("blue", "green", "magenta", "yellow", "cyan", "red") if c.get(n)]
+        light = sum(int(bg[i:i + 2], 16) for i in (1, 3, 5)) > 384
+        accent = c.get("accent") or c.get("blue") or fg
+        surface = c.get("lighter_background") or bg
+        font = None
+        alac = home / ".config/alacritty/alacritty.toml"
+        if alac.exists():
+            font = read_toml_colors(alac).get("font.normal.family")
+        name_file = d.parent / "theme.name"  # Omarchy stages a copy, so the dir name isn't the theme name
+        name = (name_file.read_text(encoding="utf-8").strip() if name_file.exists()
+                else d.resolve().name if d.resolve().name != "theme" else "current")
+        tokens = {
+            "--bg": bg, "--surface": surface, "--ink": fg,
+            "--muted": c.get("muted") or c.get("dark_foreground") or _rgba(fg, .6),
+            "--line": c.get("lighter_background") or _rgba(fg, .15),
+            "--edge": _rgba(fg, .13), "--edge-hi": accent, "--hub": c.get("bright_foreground") or fg,
+            "--focus": accent, "--sat": "62", "--lum": "44" if light else "62", "--region": ".06",
+            "--glow": "0", "--grid": "transparent", "--hues": ",".join(map(str, hues)),
+            "--card-bg": _rgba(surface, .88), "--card-border": "1px solid " + _rgba(fg, .14),
+            "--card-blur": "blur(10px)", "--card-shadow": "0 10px 30px " + _rgba("#000000", .35 if not light else .12),
+            "--radius": "10px", "--field": c.get("darker_background") or c.get("dark_background") or bg,
+        }
+        if font:
+            tokens["--font"] = '"%s",ui-monospace,Menlo,monospace' % font.replace('"', "")
+        return {"name": name, "tokens": tokens,
+                "preview": {"bg": bg, "dots": [c.get(n) or accent for n in ("blue", "magenta", "green")]}}
+    return None
+
+
 def build(root, home, bodies=True):
     home_enc = encode(home)
     raw = []
@@ -103,7 +184,7 @@ def build(root, home, bodies=True):
     assert len(ids) == len(nodes), "duplicate node ids"
     assert all(e["s"] in ids and e["t"] in ids for e in edges), "edge to unknown node"
     return {"nodes": nodes, "edges": edges, "dangling": dangling,
-            "built": datetime.date.today().isoformat()}
+            "built": datetime.date.today().isoformat(), "omarchy": omarchy_theme(home)}
 
 
 def main():
@@ -125,7 +206,8 @@ def main():
     out.write_text(template.replace("/*__DATA__*/null", payload), encoding="utf-8")
     print(f"{len(data['nodes'])} memories, {len(data['edges'])} links, {data['dangling']} dangling, "
           f"{len({n['project'] for n in data['nodes']})} projects, "
-          f"{len({n['workspace'] for n in data['nodes']})} workspaces -> {out}")
+          f"{len({n['workspace'] for n in data['nodes']})} workspaces"
+          + (f", Omarchy theme '{data['omarchy']['name']}'" if data["omarchy"] else "") + f" -> {out}")
 
 
 if __name__ == "__main__":

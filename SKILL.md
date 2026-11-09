@@ -54,4 +54,5 @@ Open the file in a browser for the user if your environment allows it (`open` on
 - The page is read-only and never changes memories.
 - The HTML embeds every memory's name, description and full text, unless it was built with `--no-bodies`. Tell the user that before they share it, and never commit it to a public repo.
 - The output is a single offline file with no network requests. Keep it that way if you change the template.
+- On Omarchy, the builder reads the active theme from `~/.local/state/omarchy/current/theme/` (or the older `~/.config/omarchy/current/theme/`) and the page defaults to a matching "Omarchy" theme. The page is a static file, so if the user switched Omarchy themes, rebuild before showing the graph.
 - To add a theme, add a `:root[data-theme="…"]` token block to the template's CSS and an entry to its `THEMES` array. The canvas reads the same tokens.

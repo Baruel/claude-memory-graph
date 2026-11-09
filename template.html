@@ -319,10 +319,20 @@ const THEMES = [
   {id:'cursor', label:'Cursor', note:'editor dark', bg:'#141414', dots:['#61afef','#c678dd','#e5a050']},
   {id:'cyber', label:'Cyber', note:'green phosphor terminal', bg:'repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),#021a0d', dots:['#00cc6a','#7dffb2','#2fa866'], glow:true},
 ];
+// Omarchy users: build.py read the active Omarchy theme; register it as a theme and make it the default
+if (DATA.omarchy) {
+  const clean = v => String(v).replace(/[;{}<>]/g, '');
+  const st = document.createElement('style');
+  st.textContent = ':root[data-theme="omarchy"]{' +
+    Object.entries(DATA.omarchy.tokens).map(([k, v]) => `${clean(k)}:${clean(v)}`).join(';') + '}';
+  document.head.appendChild(st);
+  THEMES.splice(1, 0, {id: 'omarchy', label: 'Omarchy', note: DATA.omarchy.name,
+    bg: DATA.omarchy.preview.bg, dots: DATA.omarchy.preview.dots});
+}
 let theme = '';
 $('#themes').innerHTML = THEMES.map(t => `<button role="menuitemradio" data-theme-id="${t.id}" aria-checked="false">
   <span class="prev" style="background:${t.bg}">${t.dots.map(c => `<i style="background:${c};${t.glow ? `box-shadow:0 0 6px ${c}` : ''}"></i>`).join('')}</span>
-  <span>${t.label}${t.note ? `<br><small style="color:var(--muted)">${t.note}</small>` : ''}</span></button>`).join('');
+  <span>${esc(t.label)}${t.note ? `<br><small style="color:var(--muted)">${esc(t.note)}</small>` : ''}</span></button>`).join('');
 function setTheme(t){ const d = document.documentElement; theme = t;
   if (t) d.dataset.theme = t; else delete d.dataset.theme;
   $('#tname').textContent = THEMES.find(x => x.id === t).label;
@@ -542,8 +552,9 @@ $('#pbody').onclick = e => {
 
 new ResizeObserver(() => document.documentElement.style.setProperty('--hdr', $('header').offsetHeight + 'px'))
   .observe($('header'));
-let saved = ''; try { saved = localStorage.getItem('cmg-theme') || ''; } catch {}
-setTheme(THEMES.some(t => t.id === saved) ? saved : '');
+// null = never chosen (use Omarchy when present); '' = the viewer explicitly picked Auto
+let saved = null; try { saved = localStorage.getItem('cmg-theme'); } catch {}
+setTheme(saved !== null && THEMES.some(t => t.id === saved) ? saved : DATA.omarchy ? 'omarchy' : '');
 addEventListener('resize', resize); resize(); requestAnimationFrame(tick);
 </script>
 </body>
