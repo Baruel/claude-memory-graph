@@ -48,6 +48,16 @@ Requires Python 3.8+, standard library only. Tested on macOS and Linux (Omarchy)
 - **Themes:** Auto, Paper, Ink, Blueprint, Neon, Print, Claude, Cursor and Cyber (a green-phosphor terminal), chosen from the theme menu. Claude and Cursor are palettes inspired by those apps, not official themes.
 - Hover, click, filter by type, and toggle workspaces from the legend. Alt-click isolates one.
 
+## Themes
+
+| | |
+|---|---|
+| ![Cyber: green-phosphor terminal](docs/themes/cyber.png) **Cyber** | ![Claude: warm clay and ivory](docs/themes/claude.png) **Claude** |
+| ![Blueprint: drafting-table blue](docs/themes/blueprint.png) **Blueprint** | ![Cursor: editor dark](docs/themes/cursor.png) **Cursor** |
+| ![Paper: warm light](docs/themes/paper.png) **Paper** | ![The memory reader in Cyber, with links in both directions](docs/themes/reader.png) **Reader** |
+
+Screenshots use the fictional demo set: a developer who names every project after a show.
+
 ## Privacy
 
 The HTML embeds each memory's name, description and full text (use `--no-bodies` to leave the text out). Treat it like the memories themselves. Check what's in it before you share it, and don't commit generated graphs. The `.gitignore` here excludes them.
