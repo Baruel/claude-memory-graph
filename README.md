@@ -4,6 +4,8 @@ A [Claude Code](https://claude.com/claude-code) skill that turns your memories i
 
 The output is one self-contained HTML file. It needs no server, makes no network calls and has no dependencies, so you can open it from anywhere.
 
+![Cycling through the Paper, Ink, Blueprint, Claude, Cursor and Cyber themes on a demo memory set, then searching and opening a memory](docs/demo.gif)
+
 ![claude-memory-graph in the Ink theme: workspaces as regions, a memory opened in the side reader](docs/screenshot.png)
 
 ## Why
@@ -52,6 +54,13 @@ The HTML embeds each memory's name, description and full text (use `--no-bodies`
 
 ```bash
 python3 -I test_build.py
+```
+
+For screenshots and demos without your own memories, generate a fictional memory set and build from it:
+
+```bash
+python3 demo/make_demo.py
+python3 build.py --root demo/projects --home /Users/ana demo/index.html
 ```
 
 `build.py` parses memories and writes the data into `template.html`. The template holds the canvas renderer and force layout in plain JavaScript.
