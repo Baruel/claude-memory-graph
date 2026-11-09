@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Graph</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='5' fill='%23c2410c'/%3E%3C/svg%3E">
+<style>
+/* Themes. The canvas reads these same tokens, so a theme is just one block here.
+   --sat/--lum: project palette; --region: workspace fill alpha; --glow: node blur px;
+   --grid: background grid color (transparent = none); --font: UI + canvas type;
+   --hues: optional fixed workspace hues (else golden-angle spread);
+   --card-*: floating card material (fill, border, shadow, backdrop blur), --radius, --clip (card outline),
+   --field: input/button fill inside cards; --scan: full-screen overlay (scanlines). */
+:root, :root[data-theme="paper"]{
+  --bg:#f6f4ef; --surface:#fffdf8; --ink:#1d1b17; --muted:#77716a; --line:#d9d3c8;
+  --edge:rgba(40,34,26,.16); --edge-hi:rgba(40,34,26,.75); --hub:#1d1b17; --focus:#c2410c;
+  --sat:62; --lum:48; --region:.07; --glow:0; --grid:transparent; --hues:;
+  --font:ui-sans-serif,-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --card-bg:#fffdf8; --card-border:1px solid #e3ddd2; --card-blur:none; --radius:14px; --clip:none;
+  --card-shadow:0 1px 2px rgba(40,34,26,.06),0 10px 28px rgba(40,34,26,.09);
+  --field:#f6f4ef; --scan:none;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme]){
+    --bg:#121110; --surface:#1b1a18; --ink:#ece8e1; --muted:#9a948b; --line:#33302b;
+    --edge:rgba(236,232,225,.13); --edge-hi:rgba(236,232,225,.8); --hub:#ece8e1; --focus:#fb923c;
+    --sat:60; --lum:58; --region:.08;
+    --card-bg:rgba(30,29,27,.62); --card-border:1px solid rgba(236,232,225,.1); --card-blur:blur(18px) saturate(140%);
+    --card-shadow:0 12px 36px rgba(0,0,0,.4); --field:rgba(255,255,255,.06);
+  }
+}
+/* ink: frosted smoked glass */
+:root[data-theme="ink"]{
+  --bg:#121110; --surface:#1b1a18; --ink:#ece8e1; --muted:#9a948b; --line:#33302b;
+  --edge:rgba(236,232,225,.13); --edge-hi:rgba(236,232,225,.8); --hub:#ece8e1; --focus:#fb923c;
+  --sat:60; --lum:58; --region:.08;
+  --card-bg:rgba(30,29,27,.62); --card-border:1px solid rgba(236,232,225,.1); --card-blur:blur(18px) saturate(140%);
+  --card-shadow:0 12px 36px rgba(0,0,0,.4); --field:rgba(255,255,255,.06);
+}
+/* blueprint: translucent drafting overlays, hairline borders, square corners */
+:root[data-theme="blueprint"]{
+  --bg:#0f3a6b; --surface:#134577; --ink:#e8f1ff; --muted:#9fbde0; --line:#2f6aa6;
+  --edge:rgba(232,241,255,.22); --edge-hi:rgba(255,255,255,.9); --hub:#ffffff; --focus:#ffd166;
+  --sat:40; --lum:80; --region:.05; --grid:rgba(232,241,255,.07);
+  --font:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --card-bg:rgba(15,58,107,.42); --card-border:1px solid rgba(232,241,255,.5); --card-blur:blur(3px);
+  --card-shadow:none; --radius:2px; --field:rgba(232,241,255,.07);
+}
+/* neon: airy dark glass, soft glow only (kept light: Cyber is the heavy one) */
+:root[data-theme="neon"]{
+  --bg:#0e0d18; --surface:#16142a; --ink:#f1eeff; --muted:#9a94b8; --line:#2c2846;
+  --edge:rgba(190,175,255,.09); --edge-hi:rgba(220,210,255,.75); --hub:#f1eeff; --focus:#7dffb0;
+  --sat:88; --lum:68; --region:.035; --glow:4;
+  --card-bg:rgba(26,23,44,.5); --card-border:1px solid rgba(190,175,255,.16); --card-blur:blur(16px) saturate(130%);
+  --card-shadow:0 8px 28px rgba(0,0,0,.3),0 0 22px rgba(140,110,255,.08); --radius:18px;
+  --field:rgba(255,255,255,.04);
+}
+/* print: opaque paper, hard rules, no shadow */
+:root[data-theme="print"]{
+  --bg:#ffffff; --surface:#ffffff; --ink:#111111; --muted:#666666; --line:#cccccc;
+  --edge:rgba(0,0,0,.2); --edge-hi:rgba(0,0,0,.85); --hub:#111111; --focus:#111111;
+  --sat:0; --lum:38; --region:.035;
+  --font:"Iowan Old Style",Georgia,"Times New Roman",serif;
+  --card-bg:#ffffff; --card-border:1.5px solid #111111; --card-shadow:none; --radius:0; --field:#ffffff;
+}
+/* claude (inspired by, not affiliated): warm ivory paper, clay accent, earthy palette, serif display */
+:root[data-theme="claude"]{
+  --bg:#f3f1e9; --surface:#faf9f5; --ink:#1f1e1b; --muted:#857f72; --line:#e3dfd2;
+  --edge:rgba(61,57,41,.14); --edge-hi:rgba(201,100,66,.85); --hub:#1f1e1b; --focus:#c96442;
+  --sat:46; --lum:52; --region:.06; --hues:16,38,92,205,330,170;
+  --font:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --card-bg:#faf9f5; --card-border:1px solid #e3dfd2; --card-blur:none; --radius:12px;
+  --card-shadow:0 1px 2px rgba(61,57,41,.05),0 6px 20px rgba(61,57,41,.07); --field:#f3f1e9;
+}
+/* cursor (inspired by, not affiliated): flat editor chrome, syntax-highlight palette, mono labels */
+:root[data-theme="cursor"]{
+  --bg:#141414; --surface:#1d1d1d; --ink:#e6e6e6; --muted:#8a8a8a; --line:#2c2c2c;
+  --edge:rgba(230,230,230,.08); --edge-hi:rgba(97,175,239,.9); --hub:#e6e6e6; --focus:#61afef;
+  --sat:62; --lum:66; --region:.04; --hues:207,286,29,95,173,48;
+  --font:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --card-bg:#1b1b1b; --card-border:1px solid #2c2c2c; --card-blur:none; --radius:8px;
+  --card-shadow:0 10px 30px rgba(0,0,0,.45); --field:#242424;
+}
+/* cyber: monochrome green-phosphor terminal (1980s command center): box-drawing double lines,
+   CRT bloom, scanlines + vignette, Plex Mono. Workspaces differ by slight hue/lightness shifts only. */
+:root[data-theme="cyber"]{
+  --bg:#010805; --surface:#03120a; --ink:#b8ffd4; --muted:#3f9a66; --line:#0d4a2a;
+  --edge:rgba(0,204,106,.16); --edge-hi:rgba(120,255,180,.95); --hub:#7dffb2; --focus:#eafff1;
+  --sat:100; --lum:44; --region:.04; --glow:8; --grid:rgba(0,204,106,.06); --hues:150,138,162,126,174;
+  --font:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --card-bg:rgba(1,12,6,.86); --card-border:3px double rgba(0,204,106,.75); --card-blur:blur(2px);
+  --card-shadow:0 0 14px rgba(0,204,106,.22),inset 0 0 22px rgba(0,204,106,.06); --radius:0;
+  --field:rgba(0,204,106,.06); --text-glow:0 0 6px rgba(0,255,136,.4);
+  --scan:repeating-linear-gradient(0deg,rgba(0,0,0,.26) 0 1px,transparent 1px 3px),
+         radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:14px/1.45 var(--font);overflow:hidden;text-shadow:var(--text-glow,none)}
+/* floating cards: one material per theme, set by the --card-* tokens */
+header,#legend,#panel,#themes,#tip{background:var(--card-bg);border:var(--card-border);border-radius:var(--radius);
+  box-shadow:var(--card-shadow);-webkit-backdrop-filter:var(--card-blur);backdrop-filter:var(--card-blur);clip-path:var(--clip)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:var(--scan);z-index:20}
+/* --hdr is the header's live height (set from JS), so nothing slides under a wrapped header */
+#themes{position:fixed;right:16px;top:calc(var(--hdr,56px) + 28px);width:230px;padding:6px;z-index:7}
+#themes button{display:flex;align-items:center;gap:10px;width:100%;border:0;border-radius:8px;padding:6px 8px;
+  text-align:left;background:transparent;font-size:13px}
+#themes button:hover,#themes button:focus-visible{background:var(--bg)}
+#themes button[aria-checked="true"]::after{content:"✓";margin-left:auto;color:var(--muted)}
+.prev{width:44px;height:26px;border-radius:6px;flex:none;position:relative;border:1px solid rgba(127,127,127,.3);overflow:hidden}
+.prev i{position:absolute;width:7px;height:7px;border-radius:50%}
+.prev i:nth-child(1){left:7px;top:5px}.prev i:nth-child(2){left:19px;top:13px;width:9px;height:9px}.prev i:nth-child(3){left:31px;top:6px}
+#c{position:fixed;inset:0;display:block;cursor:grab;touch-action:none}
+#c.drag{cursor:grabbing}
+header{position:fixed;top:16px;left:16px;right:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:9px 10px 9px 18px;z-index:6}
+h1{font-size:15px;font-weight:600;margin:0 8px 0 0;letter-spacing:-.01em}
+.stat{color:var(--muted);font-size:12px}
+.credit{color:var(--muted);font-size:12px;margin-right:auto;padding-left:10px;border-left:1px solid var(--line)}
+.credit a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.credit a:hover,.credit a:focus-visible{border-bottom-color:var(--ink)}
+.credit a.star{margin-left:8px;padding:2px 9px;border:1px solid var(--line);border-radius:min(999px,calc(var(--radius) * 99));background:var(--field)}
+.credit a.star:hover,.credit a.star:focus-visible{border-color:var(--focus);color:var(--focus)}
+@media (max-width:1280px){.stat{display:none}.credit{border-left:0;padding-left:0}}
+input[type=search]{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:min(999px,calc(var(--radius) * 99));
+  padding:7px 14px;font:inherit;width:180px;max-width:100%}
+button{background:var(--field);color:var(--ink);border:1px solid var(--line);border-radius:min(999px,calc(var(--radius) * 99));
+  padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
+button[aria-pressed="false"]{opacity:.45}
+button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#legend{position:fixed;left:16px;bottom:16px;max-height:45vh;overflow:auto;padding:10px 8px;width:240px;z-index:5}
+#legend h2,#panel h2{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:2px 4px 6px;font-weight:600}
+.proj{display:flex;align-items:center;gap:8px;width:100%;border:0;border-radius:8px;padding:4px 6px;text-align:left;background:transparent}
+.proj:hover{background:var(--bg)}
+.sw{width:10px;height:10px;border-radius:50%;flex:none}
+.proj .n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.proj.ws{margin-top:4px}
+.key{margin:6px 4px 12px;font-size:11px;line-height:1.45;color:var(--muted)}
+#types{display:flex;flex-wrap:wrap;gap:4px;margin:0 2px}
+#types button{padding:3px 9px;font-size:11px}
+.proj.sub{padding-left:24px;font-size:12px}
+.proj.sub .sw{width:8px;height:8px}
+#panel{position:fixed;top:calc(var(--hdr,56px) + 28px);right:16px;width:340px;max-height:calc(100vh - var(--hdr,56px) - 44px);overflow:auto;padding:16px 18px;display:none;z-index:5}
+#panel.open{display:block}
+#panel h3{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
+#panel .meta{color:var(--muted);font-size:12px;margin-bottom:10px}
+#panel .desc{margin:0 0 12px}
+#panel.wide{width:460px}
+#panel .body{font-size:13px;line-height:1.6;margin:4px 0 14px}
+#panel .body p{margin:0 0 9px}
+#panel .body h4{font-size:13px;margin:12px 0 4px}
+#panel .body ul{list-style:disc;padding-left:18px;margin:0 0 9px}
+#panel .body li{margin:2px 0}
+#panel .body code{font:12px ui-monospace,Menlo,monospace;background:var(--field);padding:1px 4px;border-radius:4px;display:inline;margin:0;color:var(--ink);word-break:break-word}
+#panel .body pre{font:11.5px/1.5 ui-monospace,Menlo,monospace;background:var(--field);padding:8px 10px;white-space:pre-wrap;word-break:break-word;margin:0 0 9px;border-radius:min(8px,var(--radius))}
+#panel .body pre.tbl{margin:0;padding:1px 10px;border-radius:0}
+#panel .body a{color:var(--ink)}
+#panel .body .wl{display:inline;border:0;padding:0;background:none;font:inherit;color:var(--ink);text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+#panel .body .wl.dead{color:var(--muted);cursor:help}
+#panel code{font:11px ui-monospace,Menlo,monospace;color:var(--muted);word-break:break-all;display:block;margin-bottom:12px}
+#panel ul{list-style:none;margin:0;padding:0}
+#panel li button{border:0;background:transparent;padding:3px 0;text-align:left;color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+#close{position:absolute;top:10px;right:10px;padding:2px 9px}
+#panel .hits li button{text-decoration:none;width:100%;padding:6px 6px;border-radius:8px;line-height:1.35}
+#panel .hits li button:hover,#panel .hits li button:focus-visible{background:var(--bg)}
+#panel .hits .pj{color:var(--muted);font-size:12px}
+#panel .hits .sn{color:var(--muted);font-size:12px}
+#panel .wsh{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 6px 2px;font-weight:600}
+#panel .back{border:0;background:transparent;padding:0;margin-bottom:8px;color:var(--muted);text-decoration:underline}
+#tip{position:fixed;pointer-events:none;padding:7px 10px;font-size:12px;max-width:280px;display:none;z-index:8}
+#tip b{display:block;font-weight:600}
+#tip span{color:var(--muted)}
+@media (max-width:640px){
+  #legend{display:none}
+  #panel{left:16px;right:16px;width:auto;top:auto;bottom:16px;max-height:50vh}
+  #themes{top:auto;bottom:16px;left:16px;right:16px;width:auto}
+  input[type=search]{width:100%}
+}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Graph of Claude memories grouped by project"></canvas>
+<header>
+  <h1>Memory Graph</h1><span class="stat" id="stat"></span>
+  <span class="credit"><a href="https://github.com/jubscodes/claude-memory-graph" target="_blank" rel="noopener">claude-memory-graph</a>
+    by <a href="https://github.com/jubscodes" target="_blank" rel="noopener">@jubscodes</a>
+    <a class="star" href="https://github.com/jubscodes/claude-memory-graph" target="_blank" rel="noopener" title="Star the repo on GitHub">★ Star</a></span>
+  <input type="search" id="q" placeholder="Search memories" aria-label="Search memories">
+  <div class="tm">
+    <button id="theme" aria-haspopup="menu" aria-expanded="false" aria-controls="themes">Theme: <span id="tname">Auto</span> ▾</button>
+  </div>
+</header>
+<!-- outside the header so the header's clip-path and backdrop blur can't clip or flatten it -->
+<div id="themes" role="menu" aria-label="Themes" hidden></div>
+<nav id="legend" aria-label="Workspaces">
+  <h2>Types</h2>
+  <div id="types"></div>
+  <p class="key">Shape shows the type. The biggest plain dots are project hubs; size grows with links.</p>
+  <h2>Workspaces</h2><div id="projs"></div></nav>
+<aside id="panel" aria-live="polite"><button id="close" aria-label="Close">×</button><div id="pbody"></div></aside>
+<div id="tip" role="tooltip"></div>
+<script>
+const DATA = {"nodes": [{"id": "home/asks-for-tests-first", "project": "home", "workspace": "home", "file": "demo/projects/-Users-ana/memory/asks-for-tests-first.md", "name": "asks-for-tests-first", "desc": "Asks for tests first", "type": "project", "date": "2026-11-08", "size": 292, "body": "Asks for tests first.\n\n**Why:** came up while working on home; Ana confirmed it.\n\n**How to apply:** follow this whenever touching home.\n\nRelated: [[never-push-to-main]], [[prefers-short-answers]]"}, {"id": "home/commit-messages-in-imperative-mood", "project": "home", "workspace": "home", "file": "demo/projects/-Users-ana/memory/commit-messages-in-imperative-mood.md", "name": "commit-messages-in-imperative-mood", "desc": "Commit messages in imperative mood", "type": "project", "date": "2026-11-08", "size": 310, "body": "Commit messages in imperative mood.\n\n**Why:** came up while working on home; Ana confirmed it.\n\n**How to apply:** follow this whenever touching home.\n\nRelated: [[prefers-short-answers]]"}, {"id": "home/never-push-to-main", "project": "home", "workspace": "home", "file": "demo/projects/-Users-ana/memory/never-push-to-main.md", "name": "never-push-to-main", "desc": "Never push to main", "type": "feedback", "date": "2026-11-08", "size": 288, "body": "Never push to main.\n\n**Why:** came up while working on home; Ana confirmed it.\n\n**How to apply:** follow this whenever touching home.\n\nRelated: [[uses-pnpm-everywhere]], [[asks-for-tests-first]]"}, {"id": "home/prefers-short-answers", "project": "home", "workspace": "home", "file": "demo/projects/-Users-ana/memory/prefers-short-answers.md", "name": "prefers-short-answers", "desc": "Prefers short answers", "type": "user", "date": "2026-11-08", "size": 307, "body": "Prefers short answers.\n\n**Why:** came up while working on home; Ana confirmed it.\n\n**How to apply:** follow this whenever touching home.\n\nRelated: [[asks-for-tests-first]], [[commit-messages-in-imperative-mood]]"}, {"id": "home/uses-pnpm-everywhere", "project": "home", "workspace": "home", "file": "demo/projects/-Users-ana/memory/uses-pnpm-everywhere.md", "name": "uses-pnpm-everywhere", "desc": "Uses pnpm everywhere", "type": "reference", "date": "2026-11-08", "size": 350, "body": "Uses pnpm everywhere.\n\n**Why:** came up while working on home; Ana confirmed it.\n\n**How to apply:** follow this whenever touching home.\n\nRelated: [[commit-messages-in-imperative-mood]], [[works-in-lisbon--utc-0]], [[empty-states-need-an-illustration]]"}, {"id": "home/works-in-lisbon--utc-0", "project": "home", "workspace": "home", "file": "demo/projects/-Users-ana/memory/works-in-lisbon--utc-0.md", "name": "works-in-lisbon--utc-0", "desc": "Works in Lisbon, UTC+0", "type": "user", "date": "2026-11-08", "size": 270, "body": "Works in Lisbon, UTC+0.\n\n**Why:** came up while working on home; Ana confirmed it.\n\n**How to apply:** follow this whenever touching home.\n\nRelated: [[uses-pnpm-everywhere]]"}, {"id": "acme/acme-is-a-b2b-invoicing-product", "project": "acme", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme/memory/acme-is-a-b2b-invoicing-product.md", "name": "acme-is-a-b2b-invoicing-product", "desc": "Acme is a B2B invoicing product", "type": "reference", "date": "2026-11-08", "size": 346, "body": "Acme is a B2B invoicing product.\n\n**Why:** came up while working on acme; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme.\n\nRelated: [[design-tokens-come-from-figma]], [[migrations-must-be-reversible]]"}, {"id": "acme/design-tokens-come-from-figma", "project": "acme", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme/memory/design-tokens-come-from-figma.md", "name": "design-tokens-come-from-figma", "desc": "Design tokens come from Figma", "type": "project", "date": "2026-11-08", "size": 338, "body": "Design tokens come from Figma.\n\n**Why:** came up while working on acme; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme.\n\nRelated: [[never-log-customer-emails]], [[empty-states-need-an-illustration]]"}, {"id": "acme/pricing-page-owned-by-marketing", "project": "acme", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme/memory/pricing-page-owned-by-marketing.md", "name": "pricing-page-owned-by-marketing", "desc": "Pricing page owned by marketing", "type": "feedback", "date": "2026-11-08", "size": 381, "body": "Pricing page owned by marketing.\n\n**Why:** came up while working on acme; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme.\n\nRelated: [[rate-limit-is-100-req-min-per-key]], [[design-tokens-come-from-figma]], [[auth-uses-short-lived-jwts]]"}, {"id": "acme/quarterly-roadmap-lives-in-linear", "project": "acme", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme/memory/quarterly-roadmap-lives-in-linear.md", "name": "quarterly-roadmap-lives-in-linear", "desc": "Quarterly roadmap lives in Linear", "type": "project", "date": "2026-11-08", "size": 347, "body": "Quarterly roadmap lives in Linear.\n\n**Why:** came up while working on acme; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme.\n\nRelated: [[design-tokens-come-from-figma]], [[auth-uses-short-lived-jwts]]"}, {"id": "acme-api/auth-uses-short-lived-jwts", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/auth-uses-short-lived-jwts.md", "name": "auth-uses-short-lived-jwts", "desc": "Auth uses short-lived JWTs", "type": "reference", "date": "2026-11-08", "size": 308, "body": "Auth uses short-lived JWTs.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[rate-limit-is-100-req-min-per-key]]"}, {"id": "acme-api/migrations-must-be-reversible", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/migrations-must-be-reversible.md", "name": "migrations-must-be-reversible", "desc": "Migrations must be reversible", "type": "feedback", "date": "2026-11-08", "size": 368, "body": "Migrations must be reversible.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[webhooks-retried-with-exponential-backoff]], [[dark-mode-is-required-for-every-screen]]"}, {"id": "acme-api/money-stored-in-integer-cents", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/money-stored-in-integer-cents.md", "name": "money-stored-in-integer-cents", "desc": "Money stored in integer cents", "type": "reference", "date": "2026-11-08", "size": 364, "body": "Money stored in integer cents.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[quarterly-roadmap-lives-in-linear]], [[webhooks-retried-with-exponential-backoff]]"}, {"id": "acme-api/never-log-customer-emails", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/never-log-customer-emails.md", "name": "never-log-customer-emails", "desc": "Never log customer emails", "type": "feedback", "date": "2026-11-08", "size": 364, "body": "Never log customer emails.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[tailwind-with-house-tokens-only]], [[auth-uses-short-lived-jwts]], [[zsh-with-starship-prompt]]"}, {"id": "acme-api/postgres-16-with-row-level-security", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/postgres-16-with-row-level-security.md", "name": "postgres-16-with-row-level-security", "desc": "Postgres 16 with row-level security", "type": "project", "date": "2026-11-08", "size": 365, "body": "Postgres 16 with row-level security.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[webhooks-retried-with-exponential-backoff]], [[next-js-app-router]]"}, {"id": "acme-api/rate-limit-is-100-req-min-per-key", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/rate-limit-is-100-req-min-per-key.md", "name": "rate-limit-is-100-req-min-per-key", "desc": "Rate limit is 100 req/min per key", "type": "reference", "date": "2026-11-08", "size": 355, "body": "Rate limit is 100 req/min per key.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[auth-uses-short-lived-jwts]], [[staging-resets-every-sunday]]"}, {"id": "acme-api/staging-resets-every-sunday", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/staging-resets-every-sunday.md", "name": "staging-resets-every-sunday", "desc": "Staging resets every Sunday", "type": "reference", "date": "2026-11-08", "size": 385, "body": "Staging resets every Sunday.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[postgres-16-with-row-level-security]], [[auth-uses-short-lived-jwts]], [[prefer-diagrams-over-walls-of-text]]"}, {"id": "acme-api/webhooks-retried-with-exponential-backoff", "project": "acme-api", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-api/memory/webhooks-retried-with-exponential-backoff.md", "name": "webhooks-retried-with-exponential-backoff", "desc": "Webhooks retried with exponential backoff", "type": "project", "date": "2026-11-08", "size": 347, "body": "Webhooks retried with exponential backoff.\n\n**Why:** came up while working on acme-api; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-api.\n\nRelated: [[money-stored-in-integer-cents]]"}, {"id": "acme-web/dark-mode-is-required-for-every-screen", "project": "acme-web", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-web/memory/dark-mode-is-required-for-every-screen.md", "name": "dark-mode-is-required-for-every-screen", "desc": "Dark mode is required for every screen", "type": "project", "date": "2026-11-08", "size": 375, "body": "Dark mode is required for every screen.\n\n**Why:** came up while working on acme-web; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-web.\n\nRelated: [[dates-shown-in-the-user-s-timezone]], [[auth-uses-short-lived-jwts]]"}, {"id": "acme-web/dates-shown-in-the-user-s-timezone", "project": "acme-web", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-web/memory/dates-shown-in-the-user-s-timezone.md", "name": "dates-shown-in-the-user-s-timezone", "desc": "Dates shown in the user's timezone", "type": "project", "date": "2026-11-08", "size": 326, "body": "Dates shown in the user's timezone.\n\n**Why:** came up while working on acme-web; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-web.\n\nRelated: [[design-tokens-come-from-figma]]"}, {"id": "acme-web/empty-states-need-an-illustration", "project": "acme-web", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-web/memory/empty-states-need-an-illustration.md", "name": "empty-states-need-an-illustration", "desc": "Empty states need an illustration", "type": "project", "date": "2026-11-08", "size": 351, "body": "Empty states need an illustration.\n\n**Why:** came up while working on acme-web; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-web.\n\nRelated: [[quarterly-roadmap-lives-in-linear]], [[next-js-app-router]]"}, {"id": "acme-web/forms-validated-with-zod", "project": "acme-web", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-web/memory/forms-validated-with-zod.md", "name": "forms-validated-with-zod", "desc": "Forms validated with zod", "type": "feedback", "date": "2026-11-08", "size": 338, "body": "Forms validated with zod.\n\n**Why:** came up while working on acme-web; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-web.\n\nRelated: [[design-tokens-come-from-figma]], [[postgres-16-with-row-level-security]]"}, {"id": "acme-web/next-js-app-router", "project": "acme-web", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-web/memory/next-js-app-router.md", "name": "next-js-app-router", "desc": "Next.js app router", "type": "project", "date": "2026-11-08", "size": 310, "body": "Next.js app router.\n\n**Why:** came up while working on acme-web; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-web.\n\nRelated: [[forms-validated-with-zod]], [[tailwind-with-house-tokens-only]]"}, {"id": "acme-web/tailwind-with-house-tokens-only", "project": "acme-web", "workspace": "acme", "file": "demo/projects/-Users-ana-Projects-acme-web/memory/tailwind-with-house-tokens-only.md", "name": "tailwind-with-house-tokens-only", "desc": "Tailwind with house tokens only", "type": "reference", "date": "2026-11-08", "size": 324, "body": "Tailwind with house tokens only.\n\n**Why:** came up while working on acme-web; Ana confirmed it.\n\n**How to apply:** follow this whenever touching acme-web.\n\nRelated: [[dates-shown-in-the-user-s-timezone]]"}, {"id": "blog/code-samples-must-run", "project": "blog", "workspace": "blog", "file": "demo/projects/-Users-ana-Projects-blog/memory/code-samples-must-run.md", "name": "code-samples-must-run", "desc": "Code samples must run", "type": "feedback", "date": "2026-11-08", "size": 285, "body": "Code samples must run.\n\n**Why:** came up while working on blog; Ana confirmed it.\n\n**How to apply:** follow this whenever touching blog.\n\nRelated: [[prefer-diagrams-over-walls-of-text]]"}, {"id": "blog/one-post-per-month", "project": "blog", "workspace": "blog", "file": "demo/projects/-Users-ana-Projects-blog/memory/one-post-per-month.md", "name": "one-post-per-month", "desc": "One post per month", "type": "reference", "date": "2026-11-08", "size": 263, "body": "One post per month.\n\n**Why:** came up while working on blog; Ana confirmed it.\n\n**How to apply:** follow this whenever touching blog.\n\nRelated: [[posts-written-in-mdx]]"}, {"id": "blog/posts-written-in-mdx", "project": "blog", "workspace": "blog", "file": "demo/projects/-Users-ana-Projects-blog/memory/posts-written-in-mdx.md", "name": "posts-written-in-mdx", "desc": "Posts written in MDX", "type": "reference", "date": "2026-11-08", "size": 337, "body": "Posts written in MDX.\n\n**Why:** came up while working on blog; Ana confirmed it.\n\n**How to apply:** follow this whenever touching blog.\n\nRelated: [[one-post-per-month]], [[prefer-diagrams-over-walls-of-text]], [[zsh-with-starship-prompt]]"}, {"id": "blog/prefer-diagrams-over-walls-of-text", "project": "blog", "workspace": "blog", "file": "demo/projects/-Users-ana-Projects-blog/memory/prefer-diagrams-over-walls-of-text.md", "name": "prefer-diagrams-over-walls-of-text", "desc": "Prefer diagrams over walls of text", "type": "feedback", "date": "2026-11-08", "size": 311, "body": "Prefer diagrams over walls of text.\n\n**Why:** came up while working on blog; Ana confirmed it.\n\n**How to apply:** follow this whenever touching blog.\n\nRelated: [[code-samples-must-run]]"}, {"id": "dotfiles/homebrew-brewfile-is-the-source-of-truth", "project": "dotfiles", "workspace": "dotfiles", "file": "demo/projects/-Users-ana-Projects-dotfiles/memory/homebrew-brewfile-is-the-source-of-truth.md", "name": "homebrew-brewfile-is-the-source-of-truth", "desc": "Homebrew Brewfile is the source of truth", "type": "project", "date": "2026-11-08", "size": 365, "body": "Homebrew Brewfile is the source of truth.\n\n**Why:** came up while working on dotfiles; Ana confirmed it.\n\n**How to apply:** follow this whenever touching dotfiles.\n\nRelated: [[neovim-config-in-lua]], [[zsh-with-starship-prompt]]"}, {"id": "dotfiles/neovim-config-in-lua", "project": "dotfiles", "workspace": "dotfiles", "file": "demo/projects/-Users-ana-Projects-dotfiles/memory/neovim-config-in-lua.md", "name": "neovim-config-in-lua", "desc": "Neovim config in Lua", "type": "feedback", "date": "2026-11-08", "size": 326, "body": "Neovim config in Lua.\n\n**Why:** came up while working on dotfiles; Ana confirmed it.\n\n**How to apply:** follow this whenever touching dotfiles.\n\nRelated: [[zsh-with-starship-prompt]], [[homebrew-brewfile-is-the-source-of-truth]]"}, {"id": "dotfiles/zsh-with-starship-prompt", "project": "dotfiles", "workspace": "dotfiles", "file": "demo/projects/-Users-ana-Projects-dotfiles/memory/zsh-with-starship-prompt.md", "name": "zsh-with-starship-prompt", "desc": "zsh with starship prompt", "type": "reference", "date": "2026-11-08", "size": 309, "body": "zsh with starship prompt.\n\n**Why:** came up while working on dotfiles; Ana confirmed it.\n\n**How to apply:** follow this whenever touching dotfiles.\n\nRelated: [[homebrew-brewfile-is-the-source-of-truth]]"}, {"id": "orbit/notifications-capped-at-2-per-day", "project": "orbit", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit/memory/notifications-capped-at-2-per-day.md", "name": "notifications-capped-at-2-per-day", "desc": "Notifications capped at 2 per day", "type": "reference", "date": "2026-11-08", "size": 367, "body": "Notifications capped at 2 per day.\n\n**Why:** came up while working on orbit; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit.\n\nRelated: [[offline-queue-persisted-to-disk]], [[conflict-rule--last-write-wins-per-field]]"}, {"id": "orbit/orbit-is-a-habit-tracking-ios-app", "project": "orbit", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit/memory/orbit-is-a-habit-tracking-ios-app.md", "name": "orbit-is-a-habit-tracking-ios-app", "desc": "Orbit is a habit-tracking iOS app", "type": "project", "date": "2026-11-08", "size": 389, "body": "Orbit is a habit-tracking iOS app.\n\n**Why:** came up while working on orbit; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit.\n\nRelated: [[offline-queue-persisted-to-disk]], [[conflict-rule--last-write-wins-per-field]], [[next-js-app-router]]"}, {"id": "orbit/streak-logic-is-timezone-sensitive", "project": "orbit", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit/memory/streak-logic-is-timezone-sensitive.md", "name": "streak-logic-is-timezone-sensitive", "desc": "Streak logic is timezone-sensitive", "type": "reference", "date": "2026-11-08", "size": 310, "body": "Streak logic is timezone-sensitive.\n\n**Why:** came up while working on orbit; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit.\n\nRelated: [[cloudkit-for-sync]]"}, {"id": "orbit/swiftui--ios-17-minimum", "project": "orbit", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit/memory/swiftui--ios-17-minimum.md", "name": "swiftui--ios-17-minimum", "desc": "SwiftUI, iOS 17 minimum", "type": "project", "date": "2026-11-08", "size": 361, "body": "SwiftUI, iOS 17 minimum.\n\n**Why:** came up while working on orbit; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit.\n\nRelated: [[streak-logic-is-timezone-sensitive]], [[widgets-refresh-every-30-min]], [[migrations-must-be-reversible]]"}, {"id": "orbit/widgets-refresh-every-30-min", "project": "orbit", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit/memory/widgets-refresh-every-30-min.md", "name": "widgets-refresh-every-30-min", "desc": "Widgets refresh every 30 min", "type": "project", "date": "2026-11-08", "size": 296, "body": "Widgets refresh every 30 min.\n\n**Why:** came up while working on orbit; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit.\n\nRelated: [[swiftui--ios-17-minimum]]"}, {"id": "orbit-sync/cloudkit-for-sync", "project": "orbit-sync", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit-sync/memory/cloudkit-for-sync.md", "name": "cloudkit-for-sync", "desc": "CloudKit for sync", "type": "reference", "date": "2026-11-08", "size": 280, "body": "CloudKit for sync.\n\n**Why:** came up while working on orbit-sync; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit-sync.\n\nRelated: [[widgets-refresh-every-30-min]]"}, {"id": "orbit-sync/conflict-rule--last-write-wins-per-field", "project": "orbit-sync", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit-sync/memory/conflict-rule--last-write-wins-per-field.md", "name": "conflict-rule--last-write-wins-per-field", "desc": "Conflict rule: last write wins per field", "type": "project", "date": "2026-11-08", "size": 375, "body": "Conflict rule: last write wins per field.\n\n**Why:** came up while working on orbit-sync; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit-sync.\n\nRelated: [[widgets-refresh-every-30-min]], [[works-in-lisbon--utc-0]]"}, {"id": "orbit-sync/offline-queue-persisted-to-disk", "project": "orbit-sync", "workspace": "orbit", "file": "demo/projects/-Users-ana-Projects-orbit-sync/memory/offline-queue-persisted-to-disk.md", "name": "offline-queue-persisted-to-disk", "desc": "Offline queue persisted to disk", "type": "reference", "date": "2026-11-08", "size": 328, "body": "Offline queue persisted to disk.\n\n**Why:** came up while working on orbit-sync; Ana confirmed it.\n\n**How to apply:** follow this whenever touching orbit-sync.\n\nRelated: [[streak-logic-is-timezone-sensitive]]"}], "edges": [{"s": "home/asks-for-tests-first", "t": "home/never-push-to-main"}, {"s": "home/asks-for-tests-first", "t": "home/prefers-short-answers"}, {"s": "home/commit-messages-in-imperative-mood", "t": "home/prefers-short-answers"}, {"s": "home/never-push-to-main", "t": "home/uses-pnpm-everywhere"}, {"s": "home/never-push-to-main", "t": "home/asks-for-tests-first"}, {"s": "home/prefers-short-answers", "t": "home/asks-for-tests-first"}, {"s": "home/prefers-short-answers", "t": "home/commit-messages-in-imperative-mood"}, {"s": "home/uses-pnpm-everywhere", "t": "home/commit-messages-in-imperative-mood"}, {"s": "home/uses-pnpm-everywhere", "t": "home/works-in-lisbon--utc-0"}, {"s": "home/uses-pnpm-everywhere", "t": "acme-web/empty-states-need-an-illustration"}, {"s": "home/works-in-lisbon--utc-0", "t": "home/uses-pnpm-everywhere"}, {"s": "acme/acme-is-a-b2b-invoicing-product", "t": "acme/design-tokens-come-from-figma"}, {"s": "acme/acme-is-a-b2b-invoicing-product", "t": "acme-api/migrations-must-be-reversible"}, {"s": "acme/design-tokens-come-from-figma", "t": "acme-api/never-log-customer-emails"}, {"s": "acme/design-tokens-come-from-figma", "t": "acme-web/empty-states-need-an-illustration"}, {"s": "acme/pricing-page-owned-by-marketing", "t": "acme-api/rate-limit-is-100-req-min-per-key"}, {"s": "acme/pricing-page-owned-by-marketing", "t": "acme/design-tokens-come-from-figma"}, {"s": "acme/pricing-page-owned-by-marketing", "t": "acme-api/auth-uses-short-lived-jwts"}, {"s": "acme/quarterly-roadmap-lives-in-linear", "t": "acme/design-tokens-come-from-figma"}, {"s": "acme/quarterly-roadmap-lives-in-linear", "t": "acme-api/auth-uses-short-lived-jwts"}, {"s": "acme-api/auth-uses-short-lived-jwts", "t": "acme-api/rate-limit-is-100-req-min-per-key"}, {"s": "acme-api/migrations-must-be-reversible", "t": "acme-api/webhooks-retried-with-exponential-backoff"}, {"s": "acme-api/migrations-must-be-reversible", "t": "acme-web/dark-mode-is-required-for-every-screen"}, {"s": "acme-api/money-stored-in-integer-cents", "t": "acme/quarterly-roadmap-lives-in-linear"}, {"s": "acme-api/money-stored-in-integer-cents", "t": "acme-api/webhooks-retried-with-exponential-backoff"}, {"s": "acme-api/never-log-customer-emails", "t": "acme-web/tailwind-with-house-tokens-only"}, {"s": "acme-api/never-log-customer-emails", "t": "acme-api/auth-uses-short-lived-jwts"}, {"s": "acme-api/never-log-customer-emails", "t": "dotfiles/zsh-with-starship-prompt"}, {"s": "acme-api/postgres-16-with-row-level-security", "t": "acme-api/webhooks-retried-with-exponential-backoff"}, {"s": "acme-api/postgres-16-with-row-level-security", "t": "acme-web/next-js-app-router"}, {"s": "acme-api/rate-limit-is-100-req-min-per-key", "t": "acme-api/auth-uses-short-lived-jwts"}, {"s": "acme-api/rate-limit-is-100-req-min-per-key", "t": "acme-api/staging-resets-every-sunday"}, {"s": "acme-api/staging-resets-every-sunday", "t": "acme-api/postgres-16-with-row-level-security"}, {"s": "acme-api/staging-resets-every-sunday", "t": "acme-api/auth-uses-short-lived-jwts"}, {"s": "acme-api/staging-resets-every-sunday", "t": "blog/prefer-diagrams-over-walls-of-text"}, {"s": "acme-api/webhooks-retried-with-exponential-backoff", "t": "acme-api/money-stored-in-integer-cents"}, {"s": "acme-web/dark-mode-is-required-for-every-screen", "t": "acme-web/dates-shown-in-the-user-s-timezone"}, {"s": "acme-web/dark-mode-is-required-for-every-screen", "t": "acme-api/auth-uses-short-lived-jwts"}, {"s": "acme-web/dates-shown-in-the-user-s-timezone", "t": "acme/design-tokens-come-from-figma"}, {"s": "acme-web/empty-states-need-an-illustration", "t": "acme/quarterly-roadmap-lives-in-linear"}, {"s": "acme-web/empty-states-need-an-illustration", "t": "acme-web/next-js-app-router"}, {"s": "acme-web/forms-validated-with-zod", "t": "acme/design-tokens-come-from-figma"}, {"s": "acme-web/forms-validated-with-zod", "t": "acme-api/postgres-16-with-row-level-security"}, {"s": "acme-web/next-js-app-router", "t": "acme-web/forms-validated-with-zod"}, {"s": "acme-web/next-js-app-router", "t": "acme-web/tailwind-with-house-tokens-only"}, {"s": "acme-web/tailwind-with-house-tokens-only", "t": "acme-web/dates-shown-in-the-user-s-timezone"}, {"s": "blog/code-samples-must-run", "t": "blog/prefer-diagrams-over-walls-of-text"}, {"s": "blog/one-post-per-month", "t": "blog/posts-written-in-mdx"}, {"s": "blog/posts-written-in-mdx", "t": "blog/one-post-per-month"}, {"s": "blog/posts-written-in-mdx", "t": "blog/prefer-diagrams-over-walls-of-text"}, {"s": "blog/posts-written-in-mdx", "t": "dotfiles/zsh-with-starship-prompt"}, {"s": "blog/prefer-diagrams-over-walls-of-text", "t": "blog/code-samples-must-run"}, {"s": "dotfiles/homebrew-brewfile-is-the-source-of-truth", "t": "dotfiles/neovim-config-in-lua"}, {"s": "dotfiles/homebrew-brewfile-is-the-source-of-truth", "t": "dotfiles/zsh-with-starship-prompt"}, {"s": "dotfiles/neovim-config-in-lua", "t": "dotfiles/zsh-with-starship-prompt"}, {"s": "dotfiles/neovim-config-in-lua", "t": "dotfiles/homebrew-brewfile-is-the-source-of-truth"}, {"s": "dotfiles/zsh-with-starship-prompt", "t": "dotfiles/homebrew-brewfile-is-the-source-of-truth"}, {"s": "orbit/notifications-capped-at-2-per-day", "t": "orbit-sync/offline-queue-persisted-to-disk"}, {"s": "orbit/notifications-capped-at-2-per-day", "t": "orbit-sync/conflict-rule--last-write-wins-per-field"}, {"s": "orbit/orbit-is-a-habit-tracking-ios-app", "t": "orbit-sync/offline-queue-persisted-to-disk"}, {"s": "orbit/orbit-is-a-habit-tracking-ios-app", "t": "orbit-sync/conflict-rule--last-write-wins-per-field"}, {"s": "orbit/orbit-is-a-habit-tracking-ios-app", "t": "acme-web/next-js-app-router"}, {"s": "orbit/streak-logic-is-timezone-sensitive", "t": "orbit-sync/cloudkit-for-sync"}, {"s": "orbit/swiftui--ios-17-minimum", "t": "orbit/streak-logic-is-timezone-sensitive"}, {"s": "orbit/swiftui--ios-17-minimum", "t": "orbit/widgets-refresh-every-30-min"}, {"s": "orbit/swiftui--ios-17-minimum", "t": "acme-api/migrations-must-be-reversible"}, {"s": "orbit/widgets-refresh-every-30-min", "t": "orbit/swiftui--ios-17-minimum"}, {"s": "orbit-sync/cloudkit-for-sync", "t": "orbit/widgets-refresh-every-30-min"}, {"s": "orbit-sync/conflict-rule--last-write-wins-per-field", "t": "orbit/widgets-refresh-every-30-min"}, {"s": "orbit-sync/conflict-rule--last-write-wins-per-field", "t": "home/works-in-lisbon--utc-0"}, {"s": "orbit-sync/offline-queue-persisted-to-disk", "t": "orbit/streak-logic-is-timezone-sensitive"}], "dangling": 0, "built": "2026-11-08"};
+const $ = s => document.querySelector(s);
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const cv = $('#c'), ctx = cv.getContext('2d');
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// --- model: one hub per project, memories attached to their hub, plus [[link]] edges
+const projects = [...new Set(DATA.nodes.map(n => n.project))]
+  .sort((a,b) => a === 'home' ? -1 : b === 'home' ? 1 : DATA.nodes.filter(n=>n.project===b).length - DATA.nodes.filter(n=>n.project===a).length);
+// each workspace gets a hue; its projects vary lightness around it
+// workspace = group of related memory dirs, computed by build.py
+const wsOf = Object.fromEntries(DATA.nodes.map(n => [n.project, n.workspace]));
+const family = p => wsOf[p];
+const families = [...new Set(projects.map(family))];
+let famHue = {};  // set per theme in readTheme()
+const famIdx = {}, projK = Object.fromEntries(projects.map(p => [p, famIdx[family(p)] = (famIdx[family(p)] ?? -1) + 1]));
+// theme tokens, cached on theme change (getComputedStyle per node per frame would be slow)
+let T = {};
+function readTheme(){ const s = getComputedStyle(document.documentElement), g = v => s.getPropertyValue(v).trim();
+  T = {bg:g('--bg'), ink:g('--ink'), edge:g('--edge'), edgeHi:g('--edge-hi'), hub:g('--hub'), focus:g('--focus'),
+    sat:+g('--sat'), lum:+g('--lum'), region:+g('--region'), glow:+g('--glow'), grid:g('--grid'), font:g('--font')};
+  const hues = g('--hues').split(',').map(Number).filter(h => g('--hues') && !isNaN(h));
+  famHue = Object.fromEntries(families.map((f,i) => [f, hues.length ? hues[i % hues.length] : (i * 137.508 + 20) % 360])); }
+readTheme();
+const pcolor = p => { const k = projK[p];
+  return `hsl(${(famHue[family(p)] + k * 14) % 360} ${Math.max(0, T.sat - k * 4)}% ${T.lum + (k % 2 ? 10 : 0) - Math.floor(k/2) * 4}%)`; };
+const wcolor = (w, a = 1, dl = 0) => `hsla(${famHue[w]} ${Math.max(0, T.sat - 5)}% ${T.lum + dl}% / ${a})`;
+const size = Object.fromEntries(projects.map(p => [p, DATA.nodes.filter(n => n.project === p).length]));
+const byId = new Map();
+const hubs = projects.map((p,i) => {
+  const fa = families.indexOf(family(p)) / families.length * Math.PI * 2, R = 260;
+  const h = {id:'#'+p, hub:true, project:p, family:family(p), name:p,
+    x:Math.cos(fa)*R + (Math.random()-.5)*60, y:Math.sin(fa)*R + (Math.random()-.5)*60, vx:0, vy:0};
+  byId.set(h.id, h); return h;
+});
+const cr = h => 14 + 9 * Math.sqrt(size[h.project]);  // approximate settled radius of a project's cluster
+// star tether: each smaller project hub orbits its workspace's biggest hub
+const anchor = {};
+hubs.forEach(h => { const a = anchor[h.family]; if (!a || size[h.project] > size[a.project]) anchor[h.family] = h; });
+const famLinks = hubs.filter(h => anchor[h.family] !== h).map(h => ({s:anchor[h.family], t:h}));
+const nodes = DATA.nodes.map(n => {
+  const h = byId.get('#'+n.project);
+  const m = {...n, x:h.x + (Math.random()-.5)*80, y:h.y + (Math.random()-.5)*80, vx:0, vy:0, deg:0};
+  byId.set(m.id, m); return m;
+});
+const links = DATA.edges.map(e => ({s:byId.get(e.s), t:byId.get(e.t), kind:'link'}));
+links.forEach(l => { l.s.deg++; l.t.deg++; });
+const tethers = nodes.map(n => ({s:n, t:byId.get('#'+n.project), kind:'hub'}));
+nodes.forEach(n => n.family = family(n.project));
+const all = [...hubs, ...nodes];
+function wsDisc(w){
+  const vs = all.filter(n => n.family === w && visible(n)); if (!vs.length) return null;
+  const cx = vs.reduce((s,n) => s + n.x, 0) / vs.length, cy = vs.reduce((s,n) => s + n.y, 0) / vs.length;
+  return {cx, cy, r: Math.max(...vs.map(n => Math.hypot(n.x - cx, n.y - cy))) + 22};
+}
+const radius = n => n.hub ? 7 + Math.sqrt(nodes.filter(m=>m.project===n.project).length) * 1.6 : 3.5 + Math.min(n.deg, 8) * 0.9;
+
+// --- filters
+const types = [...new Set(nodes.map(n => n.type))].sort();
+const typeOn = Object.fromEntries(types.map(t => [t, true]));
+const projOn = Object.fromEntries(projects.map(p => [p, true]));
+let query = '', selected = null, hover = null;
+const visible = n => n.hub ? projOn[n.project] : projOn[n.project] && typeOn[n.type];
+const matches = n => !query || (n.name + ' ' + n.desc + ' ' + n.id).toLowerCase().includes(query);
+
+$('#stat').textContent = `${nodes.length} memories · ${links.length} links · ${projects.length} projects`;
+$('#stat').title = `built ${DATA.built}`;
+// glyphs match shape() below: the chips double as the shape key
+const GLYPH = {feedback:'◆', reference:'■', user:'▲'};
+$('#types').innerHTML = types.map(t => `<button data-t="${esc(t)}" aria-pressed="true" title="${esc(t)} memories"><span aria-hidden="true">${GLYPH[t] || '●'}</span> ${esc(t)}</button>`).join(' ');
+$('#types').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; const t = b.dataset.t;
+  typeOn[t] = !typeOn[t]; b.setAttribute('aria-pressed', typeOn[t]); kick(.3); };
+const wsSize = w => projects.filter(p => family(p) === w).reduce((s,p) => s + size[p], 0);
+const wsOrder = [...families].sort((a,b) => wsSize(b) - wsSize(a));
+function renderLegend(){ $('#projs').innerHTML = wsOrder.map(w => {
+  const ps = projects.filter(p => family(p) === w);
+  return `<button class="proj ws" data-w="${esc(w)}" aria-pressed="${ps.some(p => projOn[p])}"><span class="sw" style="background:${wcolor(w)}"></span><b>${esc(w)}</b><span class="n">${wsSize(w)}</span></button>` +
+    (ps.length > 1 || ps[0] !== w ? ps.map(p => `<button class="proj sub" data-p="${esc(p)}" aria-pressed="${projOn[p]}">
+      <span class="sw" style="background:${pcolor(p)}"></span>${esc(p.startsWith(w + '-') ? p.slice(w.length + 1) : p)}<span class="n">${size[p]}</span></button>`).join('') : '');
+}).join(''); }
+renderLegend();
+$('#projs').onclick = e => { const b = e.target.closest('[data-p],[data-w]'); if (!b) return;
+  const group = b.dataset.w ? projects.filter(p => family(p) === b.dataset.w) : [b.dataset.p];
+  if (e.altKey || e.metaKey) projects.forEach(q => projOn[q] = group.includes(q));
+  else { const on = !group.every(p => projOn[p]); group.forEach(p => projOn[p] = on); }
+  document.querySelectorAll('.ws').forEach(x => x.setAttribute('aria-pressed', projects.some(p => family(p) === x.dataset.w && projOn[p])));
+  document.querySelectorAll('.sub').forEach(x => x.setAttribute('aria-pressed', projOn[x.dataset.p]));
+  kick(.4); };
+$('#q').oninput = e => { query = e.target.value.trim().toLowerCase();
+  if (query) showResults(); else if (!selected) open(null); else draw(); };
+$('#q').onkeydown = e => { if (e.key === 'Enter') $('#pbody [data-id]')?.click(); };
+function showResults(){
+  selected = null;
+  const hits = nodes.filter(n => visible(n) && matches(n))
+    .sort((a,b) => a.family.localeCompare(b.family) || a.name.localeCompare(b.name));
+  const snip = n => { const d = n.desc || '', i = d.toLowerCase().indexOf(query);
+    return esc(i > 40 ? '…' + d.slice(i - 30, i + 90) : d.slice(0, 120)); };
+  let ws = '';
+  $('#pbody').innerHTML = `<h3>${hits.length} result${hits.length === 1 ? '' : 's'}</h3>
+    <div class="meta">for “${esc(query)}” · Enter opens the first</div><ul class="hits">` +
+    hits.slice(0, 300).map(n => (n.family !== ws ? `<li class="wsh">${esc(ws = n.family)}</li>` : '') +
+      `<li><button data-id="${esc(n.id)}"><span class="sw" style="display:inline-block;background:${pcolor(n.project)}"></span>
+        <b>${esc(n.name)}</b> <span class="pj">${esc(n.project)}</span><br><span class="sn">${snip(n)}</span></button></li>`).join('') +
+    `</ul>${hits.length > 300 ? `<div class="meta">showing 300 of ${hits.length}; refine the search</div>` : ''}`;
+  $('#panel').classList.add('open'); draw();
+}
+// theme menu; preview colors mirror each theme's CSS block (bg + three node dots, glow for neon)
+const THEMES = [
+  {id:'', label:'Auto', note:'follows your system', bg:'linear-gradient(135deg,#f6f4ef 50%,#121110 50%)', dots:['#2e9d6a','#c2410c','#3b6fd8']},
+  {id:'paper', label:'Paper', bg:'#f6f4ef', dots:['#2e9d6a','#c2410c','#3b6fd8']},
+  {id:'ink', label:'Ink', bg:'#121110', dots:['#4fc28c','#f08a4b','#6f9cf0']},
+  {id:'blueprint', label:'Blueprint', bg:'#0f3a6b', dots:['#cfe6d8','#f3d9c6','#ffffff']},
+  {id:'neon', label:'Neon', bg:'#0e0d18', dots:['#7dffb0','#ff7ae6','#7ad8ff'], glow:true},
+  {id:'print', label:'Print', bg:'#ffffff', dots:['#111','#555','#999']},
+  {id:'claude', label:'Claude', note:'warm clay & ivory', bg:'#f3f1e9', dots:['#c96442','#8a9a5b','#5a7fa8']},
+  {id:'cursor', label:'Cursor', note:'editor dark', bg:'#141414', dots:['#61afef','#c678dd','#e5a050']},
+  {id:'cyber', label:'Cyber', note:'green phosphor terminal', bg:'repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),#021a0d', dots:['#00cc6a','#7dffb2','#2fa866'], glow:true},
+];
+let theme = '';
+$('#themes').innerHTML = THEMES.map(t => `<button role="menuitemradio" data-theme-id="${t.id}" aria-checked="false">
+  <span class="prev" style="background:${t.bg}">${t.dots.map(c => `<i style="background:${c};${t.glow ? `box-shadow:0 0 6px ${c}` : ''}"></i>`).join('')}</span>
+  <span>${t.label}${t.note ? `<br><small style="color:var(--muted)">${t.note}</small>` : ''}</span></button>`).join('');
+function setTheme(t){ const d = document.documentElement; theme = t;
+  if (t) d.dataset.theme = t; else delete d.dataset.theme;
+  $('#tname').textContent = THEMES.find(x => x.id === t).label;
+  document.querySelectorAll('#themes [data-theme-id]').forEach(b => b.setAttribute('aria-checked', b.dataset.themeId === t));
+  readTheme(); renderLegend(); if (selected) open(selected); draw(); }
+function menu(open){ $('#themes').hidden = !open; $('#theme').setAttribute('aria-expanded', open);
+  if (open) document.querySelector('#themes [aria-checked="true"]')?.focus(); }
+$('#theme').onclick = () => menu($('#themes').hidden);
+$('#themes').onclick = e => { const b = e.target.closest('[data-theme-id]'); if (!b) return;
+  setTheme(b.dataset.themeId); try { localStorage.setItem('cmg-theme', b.dataset.themeId); } catch {}
+  menu(false); $('#theme').focus(); };
+$('#themes').onkeydown = e => { const items = [...document.querySelectorAll('#themes button')], i = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); }
+  if (e.key === 'Escape') { menu(false); $('#theme').focus(); } };
+document.addEventListener('pointerdown', e => { if (!e.target.closest('.tm, #themes')) menu(false); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!theme) setTheme(''); });
+
+// --- simulation (plain O(n²) repulsion; fine for a few thousand nodes, cools then stops)
+let alpha = 1;
+function kick(a){ alpha = Math.max(alpha, a); if (!running) { running = true; requestAnimationFrame(tick); } }
+let running = true;
+function step(){
+  const vs = all.filter(visible);
+  for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) {
+    const a = vs[i], b = vs[j]; let dx = b.x - a.x, dy = b.y - a.y, d2 = dx*dx + dy*dy + .01;
+    const both = a.hub && b.hub;
+    if (both) {
+      // clusters must not overlap: push hubs apart until their cluster discs clear each other
+      const d = Math.sqrt(d2), min = cr(a) + cr(b) + 30;
+      if (d < min) { const f = (min - d) / d * .25; a.vx -= dx*f; a.vy -= dy*f; b.vx += dx*f; b.vy += dy*f; }
+      continue;
+    }
+    if (d2 > 90000) continue;
+    const k = (a.hub || b.hub ? 260 : 46) / Math.max(d2, 25) * alpha;
+    dx *= k; dy *= k; a.vx -= dx; a.vy -= dy; b.vx += dx; b.vy += dy;
+  }
+  const spring = (l, len, str) => { if (!visible(l.s) || !visible(l.t)) return;
+    const dx = l.t.x - l.s.x, dy = l.t.y - l.s.y, d = Math.sqrt(dx*dx + dy*dy) || 1, f = (d - len) / d * str * alpha;
+    l.s.vx += dx*f; l.s.vy += dy*f; l.t.vx -= dx*f; l.t.vy -= dy*f; };
+  tethers.forEach(l => spring(l, 34 + radius(l.t), .05));
+  links.forEach(l => spring(l, l.s.project === l.t.project ? 40 : 160, .03));
+  famLinks.forEach(l => spring(l, cr(l.s) + cr(l.t) + 16, .06));
+  // workspaces must not overlap: treat each workspace's hubs as one disc and push discs apart
+  // same discs the renderer draws, so "not overlapping" means what you see
+  const ws = families.map(w => { const d = wsDisc(w); return d && {...d, ms: all.filter(n => n.family === w && visible(n))}; }).filter(Boolean);
+  for (let i = 0; i < ws.length; i++) for (let j = i + 1; j < ws.length; j++) {
+    const a = ws[i], b = ws[j], dx = b.cx - a.cx, dy = b.cy - a.cy, d = Math.hypot(dx, dy) || 1, min = a.r + b.r + 36;
+    if (d >= min) continue;
+    const f = (min - d) / d * .08;
+    a.ms.forEach(n => { n.vx -= dx*f; n.vy -= dy*f; }); b.ms.forEach(n => { n.vx += dx*f; n.vy += dy*f; });
+  }
+  vs.forEach(n => { if (n === dragNode) return; n.vx -= n.x * .0015 * alpha; n.vy -= n.y * .0015 * alpha;
+    n.vx *= .82; n.vy *= .82; const sp = Math.hypot(n.vx, n.vy); if (sp > 30) { n.vx *= 30/sp; n.vy *= 30/sp; }
+    n.x += n.vx; n.y += n.vy; });
+  alpha *= .985;
+}
+let touched = false;  // stop auto-fitting once the viewer pans or zooms
+function fit(){
+  const vs = all.filter(visible); if (!vs.length) return;
+  const xs = vs.map(n => n.x), ys = vs.map(n => n.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const padL = innerWidth > 640 ? 280 : 16, padT = $('header').offsetHeight + 40;
+  view.k = Math.min(3, Math.min((W - padL - 40) / (x1 - x0 + 40), (H - padT - 30) / (y1 - y0 + 40)));
+  view.x = (x0 + x1) / 2 - (padL - 40) / 2 / view.k; view.y = (y0 + y1) / 2 - (padT - 30) / 2 / view.k;
+}
+function tick(){ step(); if (!touched) fit(); draw(); if (alpha > .02 || dragNode) requestAnimationFrame(tick); else running = false; }
+
+// --- view
+let view = {x:0, y:0, k:.9}, W = 0, H = 0, dpr = 1;
+function resize(){ dpr = devicePixelRatio || 1; W = innerWidth; H = innerHeight;
+  cv.width = W*dpr; cv.height = H*dpr; cv.style.width = W+'px'; cv.style.height = H+'px'; draw(); }
+const toScreen = n => [(n.x - view.x) * view.k + W/2, (n.y - view.y) * view.k + H/2];
+const toWorld = (sx, sy) => [(sx - W/2) / view.k + view.x, (sy - H/2) / view.k + view.y];
+function neighbors(n){ const s = new Set([n]);
+  links.forEach(l => { if (l.s === n) s.add(l.t); if (l.t === n) s.add(l.s); });
+  if (n.hub) nodes.forEach(m => m.project === n.project && s.add(m));
+  return s; }
+
+function shape(n, x, y, r){
+  ctx.beginPath();
+  if (n.hub) { ctx.arc(x, y, r, 0, 7); return; }
+  switch (n.type) {
+    case 'feedback': ctx.moveTo(x, y-r*1.2); ctx.lineTo(x+r*1.2, y); ctx.lineTo(x, y+r*1.2); ctx.lineTo(x-r*1.2, y); ctx.closePath(); break;
+    case 'reference': ctx.rect(x-r*.9, y-r*.9, r*1.8, r*1.8); break;
+    case 'user': ctx.moveTo(x, y-r*1.2); ctx.lineTo(x+r*1.1, y+r*.8); ctx.lineTo(x-r*1.1, y+r*.8); ctx.closePath(); break;
+    default: ctx.arc(x, y, r, 0, 7);
+  }
+}
+function draw(){
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle = T.bg; ctx.fillRect(0,0,W,H);
+  if (T.grid && T.grid !== 'transparent') {  // world-space grid that pans and zooms with the graph
+    const step = 40 * view.k, [ox, oy] = toScreen({x:0, y:0});
+    ctx.strokeStyle = T.grid; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = ((ox % step) + step) % step; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = ((oy % step) + step) % step; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+  }
+  const focus = selected || hover, near = focus ? neighbors(focus) : null;
+  const dim = n => (near && !near.has(n)) || (query && !n.hub && !matches(n));
+  // workspace regions: a soft disc around each workspace's visible nodes, labeled on top
+  for (const w of families) {
+    const disc = wsDisc(w); if (!disc) continue; const {cx, cy, r} = disc;
+    const [sx, sy] = toScreen({x:cx, y:cy}), sr = r * view.k;
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 7);
+    ctx.fillStyle = wcolor(w, T.region); ctx.fill();
+    ctx.strokeStyle = wcolor(w, .4); ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = T.sat ? wcolor(w, 1, -6) : T.ink; ctx.font = `600 13px ${T.font}`;
+    ctx.textAlign = 'center'; ctx.fillText(w, sx, sy - sr - 6); ctx.textAlign = 'left';
+  }
+  ctx.lineWidth = 1;
+  for (const l of links) { if (!visible(l.s) || !visible(l.t)) continue;
+    const hi = focus && (l.s === focus || l.t === focus);
+    ctx.strokeStyle = hi ? T.edgeHi : T.edge; ctx.globalAlpha = dim(l.s) && dim(l.t) && !hi ? .25 : 1;
+    const [x1,y1] = toScreen(l.s), [x2,y2] = toScreen(l.t);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  for (const n of all) { if (!visible(n)) continue;
+    const [x,y] = toScreen(n), r = radius(n) * Math.max(.6, Math.min(view.k, 2));
+    if (x < -40 || y < -40 || x > W+40 || y > H+40) continue;
+    ctx.globalAlpha = dim(n) ? .14 : 1;
+    shape(n, x, y, r);
+    const fill = n.hub ? T.hub : pcolor(n.project);
+    if (T.glow && !dim(n)) { ctx.shadowBlur = T.glow; ctx.shadowColor = fill; }
+    ctx.fillStyle = fill; ctx.fill(); ctx.shadowBlur = 0;
+    if (n === selected || (query && !n.hub && matches(n))) { ctx.lineWidth = 2; ctx.strokeStyle = T.focus; ctx.stroke(); ctx.lineWidth = 1; }
+    if (n.hub || (focus && near.has(n) && view.k > .5) || view.k > 2.2) {
+      ctx.fillStyle = T.ink; ctx.font = `${n.hub ? 600 : 400} ${n.hub ? 12 : 11}px ${T.font}`;
+      ctx.fillText(n.hub ? n.name : n.name.slice(0, 40), x + r + 4, y + 4); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// --- interaction
+function pick(sx, sy){ let best = null, bd = 14*14;
+  for (const n of all) { if (!visible(n)) continue; const [x,y] = toScreen(n), d = (x-sx)**2 + (y-sy)**2;
+    const r = radius(n) * Math.max(.6, Math.min(view.k,2)) + 4; if (d < Math.max(bd, r*r) && d < bd + r*r) { bd = d; best = n; } }
+  return best; }
+let dragNode = null, panning = null, moved = false;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); moved = false;
+  const n = pick(e.offsetX, e.offsetY);
+  if (n) { dragNode = n; kick(.3); } else panning = {x:e.offsetX, y:e.offsetY, vx:view.x, vy:view.y};
+  cv.classList.add('drag'); });
+cv.addEventListener('pointermove', e => {
+  if (dragNode) { moved = true; [dragNode.x, dragNode.y] = toWorld(e.offsetX, e.offsetY); dragNode.vx = dragNode.vy = 0; return; }
+  if (panning) { moved = touched = true; view.x = panning.vx - (e.offsetX - panning.x) / view.k; view.y = panning.vy - (e.offsetY - panning.y) / view.k; draw(); return; }
+  const n = pick(e.offsetX, e.offsetY);
+  if (n !== hover) { hover = n; draw(); }
+  const tip = $('#tip');
+  if (n) { tip.style.display = 'block'; tip.style.left = Math.min(e.clientX + 14, W - 290) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+    tip.innerHTML = n.hub ? `<b>${esc(n.name)}</b><span>${nodes.filter(m=>m.project===n.project).length} memories</span>`
+      : `<b>${esc(n.name)}</b><span>${esc(n.project)} · ${esc(n.type)} · ${n.date}</span>`; }
+  else tip.style.display = 'none'; });
+cv.addEventListener('pointerup', e => { cv.classList.remove('drag');
+  const n = dragNode; dragNode = null; panning = null;
+  if (!moved) open(n || null); });
+cv.addEventListener('wheel', e => { e.preventDefault(); touched = true;
+  const [wx, wy] = toWorld(e.offsetX, e.offsetY), k = Math.min(6, Math.max(.15, view.k * Math.exp(-e.deltaY * .0015)));
+  view.k = k; view.x = wx - (e.offsetX - W/2) / k; view.y = wy - (e.offsetY - H/2) / k; draw(); }, {passive:false});
+addEventListener('keydown', e => { if (e.key !== 'Escape' || !$('#themes').hidden) return;
+  if (selected && query) showResults(); else open(null); });
+$('#close').onclick = () => open(null);
+
+// --- minimal, safe markdown for memory bodies: text is escaped first, then a few patterns are re-marked
+const linkIdx = new Map();
+nodes.forEach(n => [n.name, n.id.slice(n.project.length + 1)].forEach(k => {
+  k = k.toLowerCase(); linkIdx.set(k, [...(linkIdx.get(k) || []), n]); }));
+function resolveLink(t, from){
+  t = t.trim().toLowerCase();
+  const c = [...(linkIdx.get(t) || []), ...(linkIdx.get(t.replace(/-/g, '_')) || [])];
+  return c.find(m => m.project === from.project) || c[0];
+}
+function md(src, from){
+  const inline = s => esc(s)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\[\[([^\]|#]+)[^\]]*\]\]/g, (m, t) => { const n = resolveLink(t, from);
+      return n ? `<button class="wl" data-id="${esc(n.id)}">${t}</button>` : `<span class="wl dead" title="no memory with this name">${t}</span>`; })
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const out = []; let list = null, fence = null, para = [];
+  const flush = () => { if (para.length) out.push(`<p>${inline(para.join(' '))}</p>`); para = [];
+    if (list) { out.push(`<ul>${list.join('')}</ul>`); list = null; } };
+  for (const line of src.split('\n')) {
+    if (fence) { if (/^```/.test(line)) { out.push(`<pre>${esc(fence.join('\n'))}</pre>`); fence = null; } else fence.push(line); continue; }
+    if (/^```/.test(line)) { flush(); fence = []; continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)/), li = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)/);
+    if (h) { flush(); out.push(`<h4>${inline(h[2])}</h4>`); }
+    else if (li) { if (para.length) { const l = list; list = null; flush(); list = l; } (list = list || []).push(`<li>${inline(li[1])}</li>`); }
+    else if (/^\s*\|/.test(line)) { flush(); out.push(`<pre class="tbl">${esc(line)}</pre>`); }
+    else if (!line.trim()) flush();
+    else { if (list) { out.push(`<ul>${list.join('')}</ul>`); list = null; } para.push(line.trim()); }
+  }
+  if (fence) out.push(`<pre>${esc(fence.join('\n'))}</pre>`);
+  flush();
+  return out.join('');
+}
+
+function open(n){
+  selected = n; const p = $('#panel');
+  if (!n) { p.classList.remove('open'); draw(); return; }
+  const out = links.filter(l => l.s === n).map(l => l.t), inn = links.filter(l => l.t === n).map(l => l.s);
+  const list = (title, arr) => arr.length ? `<h2>${title}</h2><ul>${arr.map(m => `<li><button data-id="${esc(m.id)}">${esc(m.name)}<span style="color:var(--muted)"> · ${esc(m.project)}</span></button></li>`).join('')}</ul>` : '';
+  $('#pbody').innerHTML = (query ? '<button class="back" data-back>← results</button>' : '') + (n.hub
+    ? `<h3>${esc(n.name)}</h3><div class="meta">project · ${nodes.filter(m=>m.project===n.project).length} memories</div>` +
+      list('Memories', nodes.filter(m => m.project === n.project).sort((a,b) => b.date.localeCompare(a.date)))
+    : `<h3>${esc(n.name)}</h3><div class="meta"><span class="sw" style="display:inline-block;background:${pcolor(n.project)}"></span> ${esc(n.project)} · ${esc(n.type)} · modified ${n.date} · ${(n.size/1024).toFixed(1)} KB</div>
+       <p class="desc">${esc(n.desc || '—')}</p><code>${esc(n.file)}</code>` +
+       (n.body ? `<h2>Memory</h2><div class="body">${md(n.body, n)}</div>` : '') +
+       list('Links to', out) + list('Linked from', inn));
+  p.classList.toggle('wide', !n.hub && !!n.body);
+  p.classList.add('open'); draw();
+}
+$('#pbody').onclick = e => {
+  if (e.target.closest('[data-back]')) return showResults();
+  const b = e.target.closest('[data-id]'); if (!b) return;
+  const n = byId.get(b.dataset.id); touched = true;  // stop auto-fit from undoing the jump
+  view.x = n.x; view.y = n.y; view.k = Math.max(view.k, 1.4); open(n); };
+
+new ResizeObserver(() => document.documentElement.style.setProperty('--hdr', $('header').offsetHeight + 'px'))
+  .observe($('header'));
+let saved = ''; try { saved = localStorage.getItem('cmg-theme') || ''; } catch {}
+setTheme(THEMES.some(t => t.id === saved) ? saved : '');
+addEventListener('resize', resize); resize(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>

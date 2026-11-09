@@ -1,6 +1,8 @@
 # generated graphs embed private memories
 *.html
 !template.html
+# the live demo (fictional data from demo/make_demo.py), served by GitHub Pages
+!docs/index.html
 __pycache__/
 .DS_Store
 .playwright-mcp/
