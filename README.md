@@ -4,6 +4,8 @@ A [Claude Code](https://claude.com/claude-code) skill that turns your memories i
 
 The output is one self-contained HTML file. It needs no server, makes no network calls and has no dependencies, so you can open it from anywhere.
 
+**[✧ Try the live demo](https://jubs.studio/claude-memory-graph/)**, built from a fictional memory set, so no install is needed.
+
 ![Cycling through the Paper, Ink, Blueprint, Claude, Cursor and Cyber themes on a demo memory set, then searching and opening a memory](docs/demo.gif)
 
 ![claude-memory-graph in the Ink theme: workspaces as regions, a memory opened in the side reader](docs/screenshot.png)
