@@ -352,6 +352,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if
 
 // --- simulation (plain O(n²) repulsion; fine for a few thousand nodes, cools then stops)
 let alpha = 1;
+const PHYS = {damp: .55, cap: 10};  // velocity damping per frame, max speed (px/frame)
 function kick(a){ alpha = Math.max(alpha, a); if (!running) { running = true; requestAnimationFrame(tick); } }
 let running = true;
 function step(){
@@ -385,20 +386,21 @@ function step(){
     a.ms.forEach(n => { n.vx -= dx*f; n.vy -= dy*f; }); b.ms.forEach(n => { n.vx += dx*f; n.vy += dy*f; });
   }
   vs.forEach(n => { if (n === dragNode) return; n.vx -= n.x * .0015 * alpha; n.vy -= n.y * .0015 * alpha;
-    // heavy friction + low speed cap = nodes glide and settle without overshoot ("asmr" motion)
-    n.vx *= .55; n.vy *= .55; const sp = Math.hypot(n.vx, n.vy); if (sp > 10) { n.vx *= 10/sp; n.vy *= 10/sp; }
+    // visible motion: heavy friction + low speed cap = glide and settle without overshoot ("asmr").
+    // The off-screen warm-up uses looser physics (PHYS.warm) so the layout fully spreads first.
+    n.vx *= PHYS.damp; n.vy *= PHYS.damp; const sp = Math.hypot(n.vx, n.vy); if (sp > PHYS.cap) { n.vx *= PHYS.cap/sp; n.vy *= PHYS.cap/sp; }
     n.x += n.vx; n.y += n.vy; });
-  alpha *= .98;
+  alpha *= .985;
 }
 let touched = false;  // stop auto-fitting once the viewer pans or zooms
-function fit(){
+function fit(snap){
   const vs = all.filter(visible); if (!vs.length) return 0;
   const xs = vs.map(n => n.x), ys = vs.map(n => n.y);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const padL = innerWidth > 640 ? 280 : 16, padT = $('header').offsetHeight + 40;
   // glide the camera toward the fitted view instead of snapping each frame
   const tk = Math.min(3, Math.min((W - padL - 40) / (x1 - x0 + 40), (H - padT - 30) / (y1 - y0 + 40)));
-  const tx = (x0 + x1) / 2 - (padL - 40) / 2 / tk, ty = (y0 + y1) / 2 - (padT - 30) / 2 / tk, f = .08;
+  const tx = (x0 + x1) / 2 - (padL - 40) / 2 / tk, ty = (y0 + y1) / 2 - (padT - 30) / 2 / tk, f = snap ? 1 : .08;
   view.k += (tk - view.k) * f; view.x += (tx - view.x) * f; view.y += (ty - view.y) * f;
   return Math.abs(tk - view.k) * W + (Math.abs(tx - view.x) + Math.abs(ty - view.y)) * view.k;  // px left to glide
 }
@@ -447,7 +449,21 @@ function draw(){
     ctx.fillStyle = T.sat ? wcolor(w, 1, -6) : T.ink; ctx.font = `600 13px ${T.font}`;
     ctx.textAlign = 'center'; ctx.fillText(w, sx, sy - sr - 6); ctx.textAlign = 'left';
   }
-  ctx.lineWidth = 1;
+  // structure spokes: memory -> its project hub, and sub-project hub -> workspace anchor (dashed).
+  // Drawn fainter than [[links]] so real relationships stay readable.
+  ctx.lineWidth = .8;
+  for (const l of tethers) { if (!visible(l.s) || !visible(l.t)) continue;
+    const hi = focus && (l.s === focus || l.t === focus);
+    ctx.strokeStyle = hi ? T.edgeHi : T.edge; ctx.globalAlpha = hi ? .75 : dim(l.s) ? .1 : .55;
+    const [x1,y1] = toScreen(l.s), [x2,y2] = toScreen(l.t);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  ctx.setLineDash([3, 4]);
+  for (const l of famLinks) { if (!visible(l.s) || !visible(l.t)) continue;
+    ctx.strokeStyle = T.edge; ctx.globalAlpha = .6;
+    const [x1,y1] = toScreen(l.s), [x2,y2] = toScreen(l.t);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.lineWidth = 1.2;
   for (const l of links) { if (!visible(l.s) || !visible(l.t)) continue;
     const hi = focus && (l.s === focus || l.t === focus);
     ctx.strokeStyle = hi ? T.edgeHi : T.edge; ctx.globalAlpha = dim(l.s) && dim(l.t) && !hi ? .25 : 1;
@@ -567,7 +583,15 @@ new ResizeObserver(() => document.documentElement.style.setProperty('--hdr', $('
 // null = never chosen (use Omarchy when present); '' = the viewer explicitly picked Auto
 let saved = null; try { saved = localStorage.getItem('cmg-theme'); } catch {}
 setTheme(saved !== null && THEMES.some(t => t.id === saved) ? saved : DATA.omarchy ? 'omarchy' : '');
-addEventListener('resize', resize); resize(); requestAnimationFrame(tick);
+addEventListener('resize', resize); resize();
+// Warm-up: run the chaotic first part of the layout off-screen, then show only a calm final settle.
+// The step budget shrinks for big graphs (each step is O(n²)) so the page never stalls.
+Object.assign(PHYS, {damp: .82, cap: 30});
+for (let i = 0, N = Math.min(400, Math.floor(4e7 / (all.length * all.length))); i < N && alpha > .12; i++) step();
+Object.assign(PHYS, {damp: .55, cap: 10});
+all.forEach(n => { n.vx *= .2; n.vy *= .2; });  // hand over to the calm physics without a jolt
+alpha = Math.min(alpha, .2); fit(true);
+requestAnimationFrame(tick);
 </script>
 </body>
 </html>
