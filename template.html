@@ -6,6 +6,7 @@
 <title>Memory Graph</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='5' fill='%23c2410c'/%3E%3C/svg%3E">
 <style>
+/*__FONTS__*/
 /* Themes. The canvas reads these same tokens, so a theme is just one block here.
    --sat/--lum: project palette; --region: workspace fill alpha; --glow: node blur px;
    --grid: background grid color (transparent = none); --font: UI + canvas type;
@@ -64,14 +65,16 @@
   --font:"Iowan Old Style",Georgia,"Times New Roman",serif;
   --card-bg:#ffffff; --card-border:1.5px solid #111111; --card-shadow:none; --radius:0; --field:#ffffff;
 }
-/* claude (inspired by, not affiliated): warm ivory paper, clay accent, earthy palette, serif display */
+/* claude (inspired by, not affiliated): palette and type from Anthropic's published brand guidelines
+   (github.com/anthropics/skills, brand-guidelines): dark #141413, light #faf9f5, mid gray #b0aea5,
+   light gray #e8e6dc; accents orange #d97757, blue #6a9bcc, green #788c5d (cycled); Poppins headings, Lora body. */
 :root[data-theme="claude"]{
-  --bg:#f3f1e9; --surface:#faf9f5; --ink:#1f1e1b; --muted:#857f72; --line:#e3dfd2;
-  --edge:rgba(61,57,41,.14); --edge-hi:rgba(201,100,66,.85); --hub:#1f1e1b; --focus:#c96442;
-  --sat:46; --lum:52; --region:.06; --hues:16,38,92,205,330,170;
-  --font:"Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --card-bg:#faf9f5; --card-border:1px solid #e3dfd2; --card-blur:none; --radius:12px;
-  --card-shadow:0 1px 2px rgba(61,57,41,.05),0 6px 20px rgba(61,57,41,.07); --field:#f3f1e9;
+  --bg:#faf9f5; --surface:#ffffff; --ink:#141413; --muted:#73726c; --line:#e8e6dc;
+  --edge:rgba(176,174,165,.55); --edge-hi:rgba(217,119,87,.9); --hub:#141413; --focus:#d97757;
+  --sat:48; --lum:58; --region:.07; --hues:15,210,86;
+  --font:"Poppins",Arial,sans-serif; --font-body:"Lora",Georgia,serif;
+  --card-bg:#ffffff; --card-border:1px solid #e8e6dc; --card-blur:none; --radius:12px;
+  --card-shadow:0 1px 2px rgba(20,20,19,.04),0 6px 20px rgba(20,20,19,.06); --field:#faf9f5;
 }
 /* cursor (inspired by, not affiliated): flat editor chrome, syntax-highlight palette, mono labels */
 :root[data-theme="cursor"]{
@@ -171,7 +174,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-
 #panel .meta{color:var(--muted);font-size:12px;margin-bottom:10px}
 #panel .desc{margin:0 0 12px}
 #panel.wide{width:460px}
-#panel .body{font-size:13px;line-height:1.6;margin:4px 0 14px}
+#panel .body{font-size:13px;line-height:1.6;margin:4px 0 14px;font-family:var(--font-body,inherit)}
+#panel .desc{font-family:var(--font-body,inherit)}
 #panel .body p{margin:0 0 9px}
 #panel .body h4{font-size:13px;margin:12px 0 4px}
 #panel .body ul{list-style:disc;padding-left:18px;margin:0 0 9px}
@@ -376,7 +380,7 @@ const THEMES = [
   {id:'blueprint', label:'Blueprint', bg:'#0f3a6b', dots:['#cfe6d8','#f3d9c6','#ffffff']},
   {id:'neon', label:'Neon', bg:'#0e0d18', dots:['#7dffb0','#ff7ae6','#7ad8ff'], glow:true},
   {id:'print', label:'Print', bg:'#ffffff', dots:['#111','#555','#999']},
-  {id:'claude', label:'Claude', note:'warm clay & ivory', bg:'#f3f1e9', dots:['#c96442','#8a9a5b','#5a7fa8']},
+  {id:'claude', label:'Claude', note:'ivory, orange, blue & green', bg:'#faf9f5', dots:['#d97757','#6a9bcc','#788c5d']},
   {id:'cursor', label:'Cursor', note:'editor dark', bg:'#141414', dots:['#61afef','#c678dd','#e5a050']},
   {id:'skeuo', label:'Skeuo', note:'linen, stitches & gloss', bg:'linear-gradient(#f1ece0,#d9d0bb)', dots:['#3b7fc4','#c8553d','#4f9a5e']},
   {id:'cyber', label:'Cyber', note:'green phosphor terminal', bg:'repeating-linear-gradient(0deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),#021a0d', dots:['#00cc6a','#7dffb2','#2fa866'], glow:true},

@@ -90,4 +90,4 @@ If the graph showed you something about your memories, ⭐ [star the repo](https
 
 ## License
 
-MIT
+MIT. The Claude theme embeds Poppins and Lora (SIL Open Font License 1.1); their licenses are in `fonts/`. The Claude and Cursor themes are palettes inspired by those apps, not official themes.

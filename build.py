@@ -135,6 +135,25 @@ def omarchy_theme(home):
     return None
 
 
+# Brand fonts for the Claude theme (SIL OFL, see fonts/OFL-*.txt), embedded so the page stays offline.
+FONTS = [("Poppins-400.woff2", "Poppins", "400", "normal"), ("Poppins-600.woff2", "Poppins", "600", "normal"),
+         ("Poppins-600-Italic.woff2", "Poppins", "600", "italic"),
+         ("Lora-wght.woff2", "Lora", "400 700", "normal"), ("Lora-Italic-wght.woff2", "Lora", "400 700", "italic")]
+
+
+def font_css(font_dir=HERE / "fonts"):
+    """@font-face rules with base64 woff2 data; missing files are skipped (page falls back to system fonts)."""
+    import base64
+    out = []
+    for name, family, weight, style in FONTS:
+        f = font_dir / name
+        if f.exists():
+            data = base64.b64encode(f.read_bytes()).decode("ascii")
+            out.append(f"@font-face{{font-family:'{family}';font-style:{style};font-weight:{weight};"
+                       f"font-display:swap;src:url(data:font/woff2;base64,{data}) format('woff2')}}")
+    return "\n".join(out)
+
+
 def build(root, home, bodies=True):
     home_enc = encode(home)
     raw = []
@@ -203,7 +222,8 @@ def main():
     # '</' would end the inline <script> early if a description contained '</script>'
     payload = json.dumps(data).replace("</", "<\\/")
     template = (HERE / "template.html").read_text(encoding="utf-8")
-    out.write_text(template.replace("/*__DATA__*/null", payload), encoding="utf-8")
+    page = template.replace("/*__FONTS__*/", font_css()).replace("/*__DATA__*/null", payload)
+    out.write_text(page, encoding="utf-8")
     print(f"{len(data['nodes'])} memories, {len(data['edges'])} links, {data['dangling']} dangling, "
           f"{len({n['project'] for n in data['nodes']})} projects, "
           f"{len({n['workspace'] for n in data['nodes']})} workspaces"

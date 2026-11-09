@@ -76,6 +76,12 @@ class BuildTest(unittest.TestCase):
         self.assertEqual((th["tokens"]["--bg"], th["tokens"]["--focus"]), ("#1a1b26", "#7aa2f7"))
         self.assertIsNone(build.omarchy_theme(self.root / "nobody"))
 
+    def test_fonts_embedded_and_optional(self):
+        css = build.font_css()
+        self.assertEqual(css.count("@font-face"), len(build.FONTS))
+        self.assertIn("font-family:'Poppins'", css)
+        self.assertEqual(build.font_css(self.root / "no-fonts-here"), "")
+
     def test_unrelated_prefix_not_grouped(self):
         self.assertEqual(build.workspaces(["acme", "acmecorp", "acme-web"]),
                          {"acme": "acme", "acmecorp": "acmecorp", "acme-web": "acme"})
