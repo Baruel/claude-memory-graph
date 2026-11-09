@@ -45,8 +45,8 @@ Requires Python 3.8+, standard library only. Tested on macOS and Linux (Omarchy)
 - **Size** grows with the number of links.
 - **Search** opens a side list of matching memories, grouped by workspace. Click a result to jump to it.
 - **Reader:** click a memory to read its full text, lightly formatted. `[[links]]` inside it jump to the linked memory.
-- **Themes:** Auto, Paper, Ink, Blueprint, Neon, Print, Claude, Cursor and Cyber (a green-phosphor terminal), chosen from the theme menu. Claude and Cursor are palettes inspired by those apps, not official themes.
-- Hover, click, filter by type, and toggle workspaces from the legend. Alt-click isolates one.
+- **Themes:** Auto, Paper, Ink, Blueprint, Neon, Print, Claude, Cursor, Skeuo (linen, stitches & gloss) and Cyber (a green-phosphor terminal), chosen from the theme menu. Claude and Cursor are palettes inspired by those apps, not official themes.
+- **Legend:** click a workspace, project or type to focus it, and click it again to show everything. ⇧-click adds or removes items, hovering previews them on the graph, and "Show all" resets the filters.
 
 ## Themes
 

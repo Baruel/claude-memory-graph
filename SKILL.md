@@ -44,9 +44,9 @@ Open the file in a browser for the user if your environment allows it (`open` on
 - Hover a node for its name and date. Click one for its description, file path and links in both directions.
 - Search opens a results list in the side panel, grouped by workspace and showing a snippet of each description. Enter opens the first result. Clicking a result centers it and shows its details, with "← results" to go back.
 - Clicking a memory opens a reader with its full text. `[[links]]` inside it jump to the linked memory.
-- The theme menu offers Auto (follows the system light/dark setting), Paper, Ink, Blueprint, Neon, Print, Claude, Cursor and Cyber. The choice is remembered in that browser.
+- The theme menu offers Auto (follows the system light/dark setting), Paper, Ink, Blueprint, Neon, Print, Claude, Cursor, Skeuo and Cyber. Zoom with the +/−/fit buttons, F to fit, / to search. The choice is remembered in that browser.
 - The type chips toggle memory types.
-- Click a workspace or project in the legend to toggle it. Alt-click shows only that one.
+- Legend: clicking a workspace, project or type focuses it (shows only it), and clicking it again shows everything. ⇧/⌘-click adds or removes items; hovering a row previews it on the canvas; "Show all" resets the filters.
 - Drag to pan, scroll to zoom, and drag nodes to move them. Esc closes the panel.
 
 ## Rules
